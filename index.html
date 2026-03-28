@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -362,7 +363,11 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 <div class="pane" id="p-proj">
   <!-- Projection panel -->
   <div class="ai-p">
-    <div class="ai-hdr"><div class="ai-pip"></div><div class="ai-t" id="proj-panel-title">Pace Projection</div></div>
+    <div class="ai-hdr">
+      <div class="ai-pip"></div>
+      <div class="ai-t" id="proj-panel-title">Pace Projection</div>
+      <div id="ai-status-badge" style="margin-left:auto;font-family:var(--fm);font-size:10px;color:var(--g3)">⬤ AI ready</div>
+    </div>
     <div class="ai-body" id="ai-proj"><span style="color:var(--g3)">Log 2+ half-innings for projections.</span></div>
     <div class="conf-row" id="conf-row" style="display:none">
       <div class="conf-l">Confidence</div>
@@ -824,75 +829,156 @@ function avgAt(his){
 }
 
 // ══ GEMINI AI ANALYSIS ════════════════════════════════════════════════════════
-// Free tier: 1,500 req/day — https://aistudio.google.com/apikey
-// Restrict key to your GitHub Pages domain in Google Cloud Console
+// Free tier: 15 req/min, 1,500 req/day — https://aistudio.google.com/apikey
 const GEMINI_KEY = 'AIzaSyAZ12ICZLfkjEr15h6GzpXeBZ78-Mr0188'; // ← paste your key here
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
-let aiTimer=null;
-function debounceAI(){ clearTimeout(aiTimer); aiTimer=setTimeout(runAI,2500); }
+// Rate limiting: only call AI once per inning end, never more than once per 60s
+let aiTimer = null;
+let aiLastCalledMs = 0;
+let aiLastInningCount = -1;
+let aiStatus = 'idle'; // 'idle' | 'loading' | 'ok' | 'error' | 'rate_limited' | 'no_key'
 
-async function runAI(){
-  const g=S.game; if(!g||g.halfInnings.length<2) return;
-  const m=computeModel(); if(!m) return;
-  updateProjPanel(m);
+function setAIStatus(status, msg) {
+  aiStatus = status;
+  const badge = document.getElementById('ai-status-badge');
+  if (!badge) return;
+  const configs = {
+    idle:         { color:'var(--g3)',  dot:'⬤', text:'AI ready' },
+    loading:      { color:'var(--or)',  dot:'⬤', text:'AI thinking...' },
+    ok:           { color:'var(--gn)',  dot:'⬤', text:'AI ✓ ' + (msg||'') },
+    error:        { color:'var(--rd)',  dot:'⬤', text:'AI error: ' + (msg||'failed') },
+    rate_limited: { color:'var(--or)',  dot:'⬤', text:'AI rate limited — retrying in 60s' },
+    no_key:       { color:'var(--g3)',  dot:'⬤', text:'Stats only (no Gemini key)' },
+  };
+  const c = configs[status] || configs.idle;
+  badge.style.color = c.color;
+  badge.textContent = c.dot + ' ' + c.text;
+}
 
-  const apEl=document.getElementById('ai-proj');
-  const aaEl=document.getElementById('ai-analysis');
-  apEl.innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
-  aaEl.innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
+function debounceAI() {
+  clearTimeout(aiTimer);
+  // Only fire AI if the inning count actually changed — prevents tab-switch spam
+  const g = S.game;
+  if (!g) return;
+  const currentCount = g.halfInnings.length;
+  if (currentCount === aiLastInningCount && aiStatus === 'ok') return;
+  // Wait 5 seconds after end of half before calling (let user see stat result first)
+  aiTimer = setTimeout(runAI, 5000);
+}
 
-  // Always render stat fallback immediately in case AI is slow/unavailable
+async function runAI() {
+  const g = S.game;
+  if (!g || g.halfInnings.length < 2) return;
+  const m = computeModel();
+  if (!m) return;
+
+  // Always render statistical analysis immediately — AI is a bonus on top
+  const apEl = document.getElementById('ai-proj');
+  const aaEl = document.getElementById('ai-analysis');
   renderStatAnalysis(g, m, apEl, aaEl);
 
-  // Only call Gemini if key is configured
-  if(!GEMINI_KEY||GEMINI_KEY==='YOUR_GEMINI_KEY_HERE') return;
+  // No key configured
+  if (!GEMINI_KEY || GEMINI_KEY === 'YOUR_GEMINI_KEY_HERE') {
+    setAIStatus('no_key');
+    return;
+  }
 
-  const seasonCtx=S.history.length>0
-    ?`Season context (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'}, avg half-inn ${m.seasonAvg?p2t(m.seasonAvg):'N/A'}, ${S.history.filter(x=>x.runRule==='Yes').length} run rules.`
-    :'No prior season data.';
+  // Rate limit: don't call more than once per 60 seconds
+  const now = Date.now();
+  if (now - aiLastCalledMs < 60000) {
+    // Schedule retry after the cooldown expires
+    const wait = 60000 - (now - aiLastCalledMs);
+    setAIStatus('rate_limited');
+    clearTimeout(aiTimer);
+    aiTimer = setTimeout(runAI, wait + 1000);
+    return;
+  }
 
-  const trendDesc=m.trendSlope>5000?`slowing (+${Math.round(m.trendSlope/1000)}s/half trend)`:m.trendSlope<-5000?`speeding up (${Math.round(m.trendSlope/1000)}s/half trend)`:'steady pace';
+  // Mark that we're starting a call
+  aiLastCalledMs = now;
+  aiLastInningCount = g.halfInnings.length;
+  setAIStatus('loading');
 
-  const prompt=`You are a college baseball pace-of-play analyst. Be concise and specific. Use the statistical model output as your anchor — don't contradict it without a strong reason.
+  const seasonCtx = S.history.length > 0
+    ? `Season context (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length ? p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length) : 'N/A'}, avg half-inn ${m.seasonAvg ? p2t(m.seasonAvg) : 'N/A'}, ${S.history.filter(x=>x.runRule==='Yes').length} run rules.`
+    : 'No prior season data.';
+
+  const trendDesc = m.trendSlope > 5000
+    ? `slowing (+${Math.round(m.trendSlope/1000)}s/half trend)`
+    : m.trendSlope < -5000
+      ? `speeding up (${Math.round(m.trendSlope/1000)}s/half trend)`
+      : 'steady pace';
+
+  const prompt = `You are a college baseball pace-of-play analyst. Be concise and specific. Use the statistical model output as your anchor.
 
 GAME: ${g.away} @ ${g.home} | ${g.date} | First pitch ${g.startTime}
 SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Half: ${hl(g.curIdx)}${m.extra?' (EXTRAS)':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
-
 HALF-INNINGS: ${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join(' ')}
-
-STAT MODEL: base avg ${p2t(m.baseMs)} | adjusted avg ${p2t(m.avgMs)} | trend ${trendDesc} | run adj +${p2t(m.runAdj)} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}% | ${m.outlierSet.size} outliers removed
+STAT MODEL: base avg ${p2t(m.baseMs)} | adjusted avg ${p2t(m.avgMs)} | trend ${trendDesc} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}%
 ${seasonCtx}
 
 Reply ONLY with valid JSON, no markdown:
 {"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence on why this end time.","pace_analysis":"2 sentences: overall pace verdict and the single biggest factor driving it.","risk_factors":"One sentence: the most likely thing that changes this projection."}`;
 
   try {
-    const r=await fetch(GEMINI_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:400}})
+    const r = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 400 }
+      })
     });
-    if(!r.ok) return; // fall back to stat display already rendered
-    const d=await r.json();
-    const raw=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    let parsed;
-    try{ parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ parsed=null; }
-    if(!parsed) return;
 
-    apEl.innerHTML=`
+    // Handle rate limit response explicitly
+    if (r.status === 429) {
+      setAIStatus('rate_limited');
+      // Retry after 90 seconds
+      clearTimeout(aiTimer);
+      aiTimer = setTimeout(runAI, 90000);
+      return;
+    }
+
+    if (!r.ok) {
+      const errBody = await r.json().catch(()=>({}));
+      const errMsg = errBody?.error?.message || `HTTP ${r.status}`;
+      setAIStatus('error', errMsg);
+      return;
+    }
+
+    const d = await r.json();
+    const raw = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch(e) { parsed = null; }
+
+    if (!parsed) {
+      setAIStatus('error', 'bad JSON response');
+      return;
+    }
+
+    // Success — update UI with AI result
+    setAIStatus('ok', `updated ${fmtT(new Date())}`);
+
+    apEl.innerHTML = `
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
         <div style="font-family:var(--fd);font-size:36px;font-weight:900;color:var(--or)">${parsed.projected_end}</div>
         <div style="font-size:11px;color:var(--g2)">${parsed.range_early} – ${parsed.range_late}</div>
       </div>
       <div style="font-size:12px;color:var(--g2)">${parsed.projection_reasoning}</div>`;
-    document.getElementById('conf-row').style.display='flex';
-    document.getElementById('conf-fill').style.width=`${m.confidence}%`;
-    document.getElementById('conf-fill').style.background=m.confidence>70?'var(--gn)':m.confidence>45?'var(--or)':'var(--rd)';
-    document.getElementById('conf-val').textContent=`${m.confidence}%`;
-    aaEl.innerHTML=`<div style="margin-bottom:6px">${parsed.pace_analysis}</div>
+
+    document.getElementById('conf-row').style.display = 'flex';
+    document.getElementById('conf-fill').style.width = `${m.confidence}%`;
+    document.getElementById('conf-fill').style.background = m.confidence>70?'var(--gn)':m.confidence>45?'var(--or)':'var(--rd)';
+    document.getElementById('conf-val').textContent = `${m.confidence}%`;
+
+    aaEl.innerHTML = `<div style="margin-bottom:6px">${parsed.pace_analysis}</div>
       <div style="font-size:12px;color:var(--g3);border-top:1px solid rgba(255,255,255,.06);padding-top:6px;margin-top:6px">⚠ ${parsed.risk_factors}</div>`;
-  } catch(e){ /* stat fallback already rendered */ }
+
+  } catch(e) {
+    setAIStatus('error', e.message || 'network error');
+    // Stat fallback already rendered above — nothing more needed
+  }
 }
 
 // Pure statistical analysis — rendered immediately, also serves as fallback
@@ -1429,7 +1515,12 @@ function tab(name){
   const ns=['game','proj','season'];
   document.querySelectorAll('.nt').forEach((b,i)=>b.classList.toggle('on',ns[i]===name));
   document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('on',ns[i]===name));
-  if(name==='proj'){ const m=computeModel(); if(m)updateProjPanel(m); if(S.game&&S.game.halfInnings.length>=2)debounceAI(); }
+  if(name==='proj'){
+    const m=computeModel(); if(m)updateProjPanel(m);
+    if(S.game&&S.game.halfInnings.length>=2&&(S.game.halfInnings.length!==aiLastInningCount||aiStatus==='idle')){
+      debounceAI();
+    }
+  }
   if(name==='season') renderSeason();
 }
 function openM(id){ document.getElementById(id).classList.add('open'); }
