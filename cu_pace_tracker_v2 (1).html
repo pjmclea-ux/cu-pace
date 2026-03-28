@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚾ CU Baseball Pace Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyC5tUd9iVa-Vna-3Ykp3dV3phHFBquEPQY",
+  authDomain: "tigers-4f98d.firebaseapp.com",
+  databaseURL: "https://tigers-4f98d-default-rtdb.firebaseio.com",
+  projectId: "tigers-4f98d",
+  storageBucket: "tigers-4f98d.firebasestorage.app",
+  messagingSenderId: "185887038072",
+  appId: "1:185887038072:web:8a2adcecc71c526f436b8d"
+};
+try {
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window._fb = { db, ref, set, onValue, ok: true };
+} catch(e) {
+  window._fb = { ok: false };
+}
+window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<style>
+:root {
+  --or: #F56600; --or2: #c45000; --og: rgba(245,102,0,0.15);
+  --pu: #522D80; --pu2: #3d1f63; --puL: #7B4DB5;
+  --bg: #0d0d0d; --bg2: #161616; --bg3: #1e1e1e; --bg4: #252525;
+  --w: #f5f5f5; --g1: #e0e0e0; --g2: #9e9e9e; --g3: #555;
+  --gn: #22c55e; --rd: #ef4444;
+  --fd: 'Barlow Condensed', sans-serif;
+  --fb: 'Barlow', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+  --r: 8px;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { -webkit-text-size-adjust:100%; height:100%; }
+body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:100vh; overflow-x:hidden; }
+
+/* ── LAYOUT ── */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+.hdr { background:var(--bg2); border-bottom:3px solid var(--or); position:sticky; top:0; z-index:50; padding:0 14px; }
+.hdr-top { display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; }
+.brand { font-family:var(--fd); font-size:18px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:var(--or); }
+.sync-pill { display:flex; align-items:center; gap:5px; font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border-radius:20px; border:1px solid var(--g3); color:var(--g2); }
+.sdot { width:6px; height:6px; border-radius:50%; background:var(--g3); }
+.sdot.live { background:var(--gn); animation:pulse 2s infinite; }
+.sdot.local { background:var(--or); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── SCOREBOARD ── */
+.sb { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; padding:8px 0 6px; }
+.tc { text-align:center; }
+.tabbr { font-family:var(--fd); font-size:28px; font-weight:900; letter-spacing:1px; text-transform:uppercase; line-height:1; color:var(--or); }
+.tabbr.aw { color:var(--g1); }
+.tfull { font-size:10px; color:var(--g2); letter-spacing:1px; text-transform:uppercase; margin-top:1px; }
+.sc-main { font-family:var(--fd); font-size:44px; font-weight:900; letter-spacing:3px; line-height:1; color:var(--w); text-align:center; }
+.inn-st { font-family:var(--fd); font-size:12px; font-weight:700; letter-spacing:1px; color:var(--g2); display:flex; align-items:center; justify-content:center; gap:5px; margin-top:2px; }
+.pip { width:7px; height:7px; border-radius:50%; background:var(--gn); animation:pulse 1.5s infinite; }
+.pip.off { background:var(--g3); animation:none; }
+.inn-dots { display:flex; justify-content:center; gap:2px; padding:4px 0 7px; flex-wrap:wrap; }
+.id { width:17px; height:11px; border-radius:2px; background:var(--bg4); display:flex; align-items:center; justify-content:center; font-family:var(--fd); font-size:8px; font-weight:700; color:var(--g3); }
+.id.dn { background:var(--or2); color:rgba(255,255,255,.6); }
+.id.ac { background:var(--or); color:#000; width:22px; font-size:9px; }
+.id.sp { width:3px; background:transparent; }
+.id.ex { background:rgba(82,45,128,.4); color:var(--puL); }
+.id.ex.ac { background:var(--pu); color:#fff; }
+.id.ex.dn { background:rgba(82,45,128,.5); }
+
+/* ── PACE BAR ── */
+.pace-bar { background:var(--bg3); display:flex; align-items:center; gap:10px; padding:6px 14px; border-bottom:1px solid var(--bg4); }
+.pace-lbl { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--g3); white-space:nowrap; }
+.pace-track { flex:1; height:5px; background:var(--bg4); border-radius:3px; position:relative; }
+.pace-fill { height:100%; border-radius:3px; transition:width .5s, background .5s; }
+.pace-mark { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--or); left:75%; border-radius:1px; }
+.pace-val { font-family:var(--fm); font-size:12px; font-weight:600; white-space:nowrap; min-width:60px; text-align:right; color:var(--w); }
+
+/* ── NAV ── */
+.nav { padding:8px 14px 0; }
+.nav-tabs { display:grid; grid-template-columns:repeat(3,1fr); background:var(--bg3); border-radius:var(--r); padding:3px; gap:2px; }
+.nt { font-family:var(--fd); font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:8px 4px; border:none; border-radius:6px; cursor:pointer; background:transparent; color:var(--g2); transition:all .2s; -webkit-tap-highlight-color:transparent; }
+.nt.on { background:var(--pu); color:var(--w); }
+
+/* ── CONTENT ── */
+.content { padding:10px 14px 20px; max-width:580px; margin:0 auto; width:100%; }
+.pane { display:none; }
+.pane.on { display:block; }
+
+/* ── CARDS / FORMS ── */
+.card { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:14px; margin-bottom:10px; }
+.card-t { font-family:var(--fd); font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--or); margin-bottom:12px; }
+.fgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.fg { display:flex; flex-direction:column; gap:4px; }
+.fg.full { grid-column:1/-1; }
+.fl { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--g2); }
+.fi { background:var(--bg4); border:1px solid rgba(255,255,255,.1); border-radius:6px; color:var(--w); font-family:var(--fb); font-size:15px; padding:9px 10px; width:100%; outline:none; transition:border .2s; -webkit-appearance:none; appearance:none; }
+.fi:focus { border-color:var(--or); }
+.fi::placeholder { color:var(--g3); }
+
+/* ── BUTTONS ── */
+.btn { width:100%; padding:15px; font-family:var(--fd); font-size:17px; font-weight:800; letter-spacing:2px; text-transform:uppercase; border:none; border-radius:var(--r); cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:8px; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.btn:active { transform:scale(.97); }
+.b-or { background:var(--or); color:#fff; }
+.b-or:hover { background:var(--or2); }
+.b-rd { background:var(--rd); color:#fff; }
+.b-gh { background:var(--bg4); color:var(--g1); border:1px solid rgba(255,255,255,.1); }
+.bsm { font-family:var(--fd); font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; padding:5px 12px; border:none; border-radius:5px; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.bsm.b-gh-sm { background:var(--bg4); color:var(--g2); border:1px solid var(--g3); }
+
+/* ── RUN ROW ── */
+.run-row { display:flex; align-items:center; justify-content:space-between; background:var(--og); border:1px solid rgba(245,102,0,.3); border-radius:var(--r); padding:10px 14px; margin-bottom:10px; }
+.rl { font-family:var(--fd); font-size:15px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--or); }
+.rl-sub { font-size:11px; color:var(--g2); margin-top:1px; }
+.run-ctr { display:flex; align-items:center; gap:10px; }
+.rb { width:44px; height:44px; border-radius:50%; border:none; font-size:24px; font-weight:700; cursor:pointer; background:rgba(255,255,255,.12); color:var(--w); display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; touch-action:manipulation; line-height:1; }
+.rb:active { transform:scale(.88); background:rgba(255,255,255,.25); }
+.rn { font-family:var(--fd); font-size:38px; font-weight:900; min-width:36px; text-align:center; line-height:1; }
+
+/* ── ACTION BAR (inline, not fixed) ── */
+.action-bar { display:none; gap:8px; margin-bottom:10px; }
+.action-bar.show { display:flex; }
+.action-bar .btn { font-size:17px; padding:15px; }
+
+/* ── SCOREGRID ── */
+.sg { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); overflow:hidden; margin-bottom:10px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.sg-row { display:grid; border-bottom:1px solid rgba(255,255,255,.05); }
+.sg-row:last-child { border-bottom:none; }
+.sc { padding:7px 2px; text-align:center; font-size:13px; font-weight:700; font-family:var(--fd); border-right:1px solid rgba(255,255,255,.04); }
+.sc:last-child { border-right:none; }
+.sc.h { font-size:10px; color:var(--g3); background:rgba(0,0,0,.5); }
+.sc.t { background:rgba(0,0,0,.35); color:var(--or); font-size:12px; }
+.sc.t.a { color:var(--g2); }
+.sc.rv { color:var(--or); font-size:15px; }
+.sc.zv { color:var(--g3); }
+.sc.cur { background:rgba(245,102,0,.1); color:var(--or); }
+.sc.tot { background:rgba(0,0,0,.3); font-size:16px; color:var(--w); }
+.sc.xt { color:var(--puL); }
+
+/* ── HI LOG ── */
+.hi-log { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); overflow:hidden; margin-bottom:10px; }
+.hi-hdr { display:grid; grid-template-columns:42px 1fr 50px 40px 36px 68px; padding:6px 10px; background:rgba(0,0,0,.5); font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--g3); gap:3px; }
+.hi-r { display:grid; grid-template-columns:42px 1fr 50px 40px 36px 68px; padding:8px 10px; border-top:1px solid rgba(255,255,255,.04); align-items:center; gap:3px; }
+.hi-r:hover { background:rgba(255,255,255,.02); }
+.hi-r.out { background:rgba(239,68,68,.04); }
+.hi-inn { font-family:var(--fd); font-size:16px; font-weight:800; color:var(--or); }
+.hi-inn.ex { color:var(--puL); }
+.hi-time { font-family:var(--fm); font-size:11px; color:var(--g2); }
+.hi-dur { font-family:var(--fm); font-size:11px; font-weight:600; }
+.hi-dur.fast { color:var(--gn); }
+.hi-dur.slow { color:var(--rd); }
+.hi-runs { font-family:var(--fd); font-size:15px; font-weight:700; text-align:center; }
+.hi-proj { font-family:var(--fm); font-size:10px; text-align:right; color:var(--g2); }
+.out-tag { font-family:var(--fd); font-size:8px; font-weight:700; text-transform:uppercase; color:var(--rd); background:rgba(239,68,68,.15); border-radius:3px; padding:1px 4px; }
+.adj-btn { background:none; border:none; color:var(--g3); cursor:pointer; font-size:13px; padding:2px 4px; border-radius:4px; -webkit-tap-highlight-color:transparent; }
+.adj-btn:active { color:var(--or); }
+
+/* ── SECTION HDR ── */
+.sh { font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--g3); margin:14px 0 7px; display:flex; align-items:center; gap:8px; }
+.sh::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.06); }
+
+/* ── PROJ CARDS ── */
+.pg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.pjc { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:12px; text-align:center; }
+.pjc.feat { border-color:rgba(245,102,0,.4); background:rgba(245,102,0,.06); }
+.pj-l { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--g2); margin-bottom:4px; }
+.pj-t { font-family:var(--fd); font-size:28px; font-weight:900; line-height:1; color:var(--w); }
+.pj-s { font-size:10px; color:var(--g2); margin-top:3px; line-height:1.4; }
+.pj-s.ov { color:var(--rd); }
+.pj-s.un { color:var(--gn); }
+
+/* ── STAT PILLS ── */
+.sp-row { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:10px; }
+.sp { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:10px 7px; text-align:center; }
+.sp-v { font-family:var(--fd); font-size:21px; font-weight:800; line-height:1; color:var(--or); }
+.sp-l { font-size:9px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--g2); margin-top:3px; }
+
+/* ── AI PANELS ── */
+.ai-p { background:var(--bg2); border:1px solid rgba(82,45,128,.5); border-radius:var(--r); padding:12px; margin-bottom:10px; }
+.ai-hdr { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.ai-pip { width:7px; height:7px; border-radius:50%; background:var(--puL); animation:pulse 2s infinite; }
+.ai-t { font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--puL); }
+.ai-body { font-size:13px; line-height:1.65; color:var(--g1); }
+.ai-thinking { display:flex; gap:4px; align-items:center; }
+.ai-d { width:6px; height:6px; border-radius:50%; background:var(--puL); animation:dp 1.2s infinite; }
+.ai-d:nth-child(2){animation-delay:.2s} .ai-d:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}
+
+/* ── CONFIDENCE BAR ── */
+.conf-row { display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
+.conf-l { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--g3); white-space:nowrap; }
+.conf-track { flex:1; height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:2px; background:var(--gn); transition:width .5s; }
+.conf-val { font-family:var(--fd); font-size:12px; font-weight:700; color:var(--g2); white-space:nowrap; }
+
+/* ── PACE CHART ── */
+.pc-row { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.pc-l { font-family:var(--fd); font-size:11px; font-weight:700; color:var(--g2); width:26px; text-align:right; }
+.pc-track { flex:1; height:12px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+.pc-fill { height:100%; border-radius:2px; transition:width .4s; }
+.pc-v { font-family:var(--fm); font-size:10px; color:var(--g2); width:36px; }
+.pc-r { font-family:var(--fd); font-size:11px; font-weight:700; color:var(--or); width:20px; }
+
+/* ── SEASON ── */
+.s-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.s-card { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:14px; }
+.s-v { font-family:var(--fd); font-size:32px; font-weight:900; line-height:1; color:var(--or); }
+.s-l { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--g2); margin-top:4px; }
+.hg { background:var(--bg2); border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:12px 14px; margin-bottom:8px; }
+.hg-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+.hg-t { font-family:var(--fd); font-size:16px; font-weight:800; color:var(--w); }
+.hg-d { font-family:var(--fm); font-size:11px; color:var(--g2); }
+.hg-s { display:flex; flex-wrap:wrap; gap:8px; }
+.hg-st { font-size:12px; color:var(--g2); }
+.hg-st b { color:var(--w); font-weight:600; }
+.bdg { display:inline-flex; padding:2px 7px; border-radius:4px; font-family:var(--fd); font-size:10px; font-weight:700; text-transform:uppercase; }
+.b-or { background:rgba(245,102,0,.2); color:var(--or); }
+.b-gn { background:rgba(34,197,94,.15); color:var(--gn); }
+.b-rd { background:rgba(239,68,68,.15); color:var(--rd); }
+.b-gy { background:rgba(158,158,158,.1); color:var(--g2); }
+
+/* ── EXTRA INNINGS ── */
+.xi-banner { background:rgba(82,45,128,.15); border:1px solid rgba(123,77,181,.4); border-radius:var(--r); padding:9px 14px; margin-bottom:10px; font-family:var(--fd); font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--puL); text-align:center; display:none; }
+.xi-banner.show { display:block; }
+
+/* ── ADMIN ── */
+.ao { display:none; } .ao.on { display:block; }
+.a-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.viewer-bar { background:var(--pu2); border-bottom:2px solid var(--puL); padding:5px 14px; text-align:center; font-family:var(--fd); font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.7); display:none; }
+.viewer-bar.show { display:block; }
+
+/* ── MODAL ── */
+.modal-wrap { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; padding:16px; }
+.modal-wrap.open { display:flex; }
+.modal-box { background:var(--bg2); border:1px solid var(--or); border-radius:12px; padding:22px; width:100%; max-width:360px; max-height:90vh; overflow-y:auto; }
+.modal-t { font-family:var(--fd); font-size:21px; font-weight:900; letter-spacing:1px; text-transform:uppercase; color:var(--or); margin-bottom:8px; }
+.modal-b { font-size:13px; color:var(--g2); margin-bottom:14px; line-height:1.6; }
+.modal-btns { display:flex; gap:8px; }
+.modal-btns .btn { font-size:15px; padding:12px; }
+.efl { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--g2); margin-bottom:4px; }
+
+.empty { text-align:center; padding:28px 20px; color:var(--g3); font-size:13px; }
+@media(max-width:360px){.pj-t{font-size:22px}.sc-main{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="viewer-bar" id="vbar">👁 Live View — Read Only</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="brand">🐾 CU Pace</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="sync-pill"><div class="sdot" id="sdot"></div><span id="slbl">...</span></div>
+      <button class="bsm b-gh-sm" onclick="openM('m-admin')" id="admin-btn">Admin</button>
+    </div>
+  </div>
+  <div class="sb">
+    <div class="tc"><div class="tabbr" id="h-hm">CU</div><div class="tfull" id="h-hf">Clemson</div></div>
+    <div class="tc">
+      <div class="sc-main" id="h-sc">0 – 0</div>
+      <div class="inn-st"><span class="pip off" id="h-pip"></span><span id="h-st">Pre-Game</span></div>
+    </div>
+    <div class="tc"><div class="tabbr aw" id="h-aw">OPP</div><div class="tfull" id="h-af">Opponent</div></div>
+  </div>
+  <div class="inn-dots" id="inn-dots"></div>
+</div>
+
+<!-- PACE BAR -->
+<div class="pace-bar">
+  <div class="pace-lbl">Pace</div>
+  <div class="pace-track">
+    <div class="pace-fill" id="pf" style="width:0%;background:var(--gn)"></div>
+    <div class="pace-mark"></div>
+  </div>
+  <div class="pace-val" id="pv">--:--</div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-tabs">
+    <button class="nt on" onclick="tab('game')">Game</button>
+    <button class="nt" onclick="tab('proj')">Projection</button>
+    <button class="nt" onclick="tab('season')">Season</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- GAME PANE -->
+<div class="pane on" id="p-game">
+  <!-- SETUP -->
+  <div id="setup">
+    <div class="card">
+      <div class="card-t">⚾ New Game Setup</div>
+      <div class="fgrid">
+        <div class="fg"><div class="fl">Home Team</div><input class="fi" id="i-hm" placeholder="Clemson" maxlength="20"></div>
+        <div class="fg"><div class="fl">Away Team</div><input class="fi" id="i-aw" placeholder="Opponent" maxlength="20"></div>
+        <div class="fg"><div class="fl">Date</div><input class="fi" id="i-dt" type="date"></div>
+        <div class="fg"><div class="fl">First Pitch</div><input class="fi" id="i-st" type="time"></div>
+        <div class="fg full"><div class="fl">Location</div><input class="fi" id="i-lc" placeholder="Doug Kingsmore Stadium"></div>
+      </div>
+      <button class="btn b-or" onclick="startGame()">▶ Start Tracking</button>
+    </div>
+  </div>
+
+  <!-- ACTIVE GAME -->
+  <div id="active" style="display:none">
+    <!-- Admin bar -->
+    <div class="ao" id="adm-bar">
+      <div class="a-row">
+        <span style="font-family:var(--fd);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--or)">Admin</span>
+        <div style="display:flex;gap:6px">
+          <button class="bsm b-gh-sm" onclick="openEndM()">End Game</button>
+          <button class="bsm b-gh-sm" onclick="openM('m-newgame')">New Game</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extra innings -->
+    <div class="xi-banner" id="xi-banner">⚡ Extra Innings</div>
+
+    <!-- Run input -->
+    <div class="run-row">
+      <div><div class="rl" id="run-lbl">Top 1</div><div class="rl-sub">Runs this half-inning</div></div>
+      <div class="run-ctr">
+        <button class="rb" onclick="adjR(-1)">−</button>
+        <div class="rn" id="run-n">0</div>
+        <button class="rb" onclick="adjR(1)">+</button>
+      </div>
+    </div>
+
+    <!-- INLINE action bar -->
+    <div class="action-bar ao" id="act-bar">
+      <button class="btn b-gh" onclick="openUndoM()" style="flex:0 0 56px;padding:15px 0;font-size:20px;min-width:56px">↩</button>
+      <button class="btn b-or" onclick="endHalf()">⏱ End Half-Inning</button>
+    </div>
+
+    <div class="sg" id="sg"></div>
+
+    <div class="sh">Half-Inning Log</div>
+    <div class="hi-log">
+      <div class="hi-hdr"><div>Inn</div><div>End</div><div>Dur</div><div style="text-align:center">R</div><div>Adj</div><div style="text-align:right">Proj</div></div>
+      <div id="hi-rows"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROJ PANE -->
+<div class="pane" id="p-proj">
+  <!-- AI Projection -->
+  <div class="ai-p">
+    <div class="ai-hdr"><div class="ai-pip"></div><div class="ai-t">AI Projection Model</div></div>
+    <div class="ai-body" id="ai-proj"><span style="color:var(--g3)">Log 2+ half-innings for AI-powered projections.</span></div>
+    <div class="conf-row" id="conf-row" style="display:none">
+      <div class="conf-l">Confidence</div>
+      <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+      <div class="conf-val" id="conf-val">—</div>
+    </div>
+  </div>
+
+  <div class="sh">End Time Projections</div>
+  <div class="pg">
+    <div class="pjc feat"><div class="pj-l">Full Game</div><div class="pj-t" id="pj-9">--:--</div><div class="pj-s" id="pj-9s"></div></div>
+    <div class="pjc"><div class="pj-l">No Bot 9</div><div class="pj-t" id="pj-n9">--:--</div><div class="pj-s" id="pj-n9s"></div></div>
+    <div class="pjc"><div class="pj-l">Run Rule (B7)</div><div class="pj-t" id="pj-rr">--:--</div><div class="pj-s" id="pj-rrs"></div></div>
+    <div class="pjc"><div class="pj-l">3-Hr Target</div><div class="pj-t" id="pj-3h">--:--</div><div class="pj-s">3:30 below</div></div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--g2)">3:30 Target</div>
+    <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--w)" id="pj-330">--:--</div>
+  </div>
+
+  <!-- AI Analysis panel -->
+  <div class="ai-p">
+    <div class="ai-hdr"><div class="ai-pip"></div><div class="ai-t">Live Pace Analysis</div></div>
+    <div class="ai-body" id="ai-analysis"><span style="color:var(--g3)">Analysis appears after 2+ half-innings.</span></div>
+  </div>
+
+  <div class="sh">Current Stats</div>
+  <div class="sp-row">
+    <div class="sp"><div class="sp-v" id="st-avg">—</div><div class="sp-l">Avg Half-Inn</div></div>
+    <div class="sp"><div class="sp-v" id="st-done">0</div><div class="sp-l">Completed</div></div>
+    <div class="sp"><div class="sp-v" id="st-el">—</div><div class="sp-l">Elapsed</div></div>
+  </div>
+
+  <div class="sh">Half-Inning Durations</div>
+  <div id="pace-chart" style="margin-bottom:10px"></div>
+</div>
+
+<!-- SEASON PANE -->
+<div class="pane" id="p-season">
+  <div class="sh">Season Summary</div>
+  <div class="s-grid">
+    <div class="s-card"><div class="s-v" id="ss-g">0</div><div class="s-l">Games Logged</div></div>
+    <div class="s-card"><div class="s-v" id="ss-t">—</div><div class="s-l">Avg Game Time</div></div>
+    <div class="s-card"><div class="s-v" id="ss-i">—</div><div class="s-l">Avg Half-Inn</div></div>
+    <div class="s-card"><div class="s-v" id="ss-r">0</div><div class="s-l">Run Rules</div></div>
+  </div>
+  <div class="sh">Game History</div>
+  <div id="hist-list"></div>
+</div>
+
+</div><!-- /content -->
+
+<!-- MODALS -->
+<div class="modal-wrap" id="m-admin">
+  <div class="modal-box">
+    <div class="modal-t">Admin</div>
+    <div class="modal-b">Enter your password to enable data input.</div>
+    <div class="fg" style="margin-bottom:12px"><div class="efl">Password</div><input class="fi" id="pw" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')doAdmin()"></div>
+    <div class="modal-btns">
+      <button class="btn b-gh" onclick="closeM('m-admin')">Cancel</button>
+      <button class="btn b-or" onclick="doAdmin()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="m-newgame">
+  <div class="modal-box">
+    <div class="modal-t">New Game</div>
+    <div class="modal-b">Archive the current game to history and start fresh?</div>
+    <div class="modal-btns">
+      <button class="btn b-gh" onclick="closeM('m-newgame')">Cancel</button>
+      <button class="btn b-or" onclick="doNewGame()">Archive &amp; New</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="m-end">
+  <div class="modal-box">
+    <div class="modal-t">End Game</div>
+    <div class="modal-b">Confirm final details before saving to history.</div>
+    <div class="fgrid" style="margin-bottom:10px">
+      <div class="fg"><div class="efl" id="el-hm">Home Score</div><input class="fi" id="f-hm" type="number" min="0" value="0"></div>
+      <div class="fg"><div class="efl" id="el-aw">Away Score</div><input class="fi" id="f-aw" type="number" min="0" value="0"></div>
+      <div class="fg"><div class="efl">Innings</div><input class="fi" id="f-in" type="number" min="7" max="20" value="9"></div>
+      <div class="fg"><div class="efl">Run Rule?</div><select class="fi" id="f-rr"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn b-gh" onclick="closeM('m-end')">Cancel</button>
+      <button class="btn b-or" onclick="doEnd()">Save to History</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="m-undo">
+  <div class="modal-box">
+    <div class="modal-t">Adjust Last Half</div>
+    <div class="modal-b" id="undo-desc">Edit or remove the last logged half-inning.</div>
+    <div class="fgrid" style="margin-bottom:12px">
+      <div class="fg"><div class="efl">Runs Scored</div><input class="fi" id="u-runs" type="number" min="0" value="0"></div>
+      <div class="fg"><div class="efl">End Time (HH:MM)</div><input class="fi" id="u-time" type="time"></div>
+    </div>
+    <div class="modal-btns" style="flex-direction:column;gap:8px">
+      <button class="btn b-or" onclick="doAdjust()">Update Runs &amp; Time</button>
+      <button class="btn b-rd" onclick="doUndo()">Remove &amp; Re-Log</button>
+      <button class="btn b-gh" onclick="closeM('m-undo')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="m-edit">
+  <div class="modal-box">
+    <div class="modal-t">Edit Half-Inning</div>
+    <div class="modal-b" id="edit-desc"></div>
+    <div class="fgrid" style="margin-bottom:12px">
+      <div class="fg"><div class="efl">Runs Scored</div><input class="fi" id="e-runs" type="number" min="0" value="0"></div>
+      <div class="fg"><div class="efl">End Time (HH:MM)</div><input class="fi" id="e-time" type="time"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn b-gh" onclick="closeM('m-edit')">Cancel</button>
+      <button class="btn b-or" onclick="doEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ══ CONFIG ════════════════════════════════════════════════════════════════════
+const PW      = "tigers";   // ← change to your password
+const DB_PATH = "cu_pace2";
+const LK      = "cu_v6";
+
+// ══ STATE ═════════════════════════════════════════════════════════════════════
+let S = { game:null, history:[], admin:false, fb:null, fbOk:false, editIdx:-1 };
+
+function blankGame() {
+  const n=new Date(), p=x=>String(x).padStart(2,'0');
+  return {
+    home:'Clemson', away:'Opponent',
+    date:n.toISOString().split('T')[0], location:'',
+    startTime:`${p(n.getHours())}:${p(n.getMinutes())}`,
+    startMs:n.getTime(),
+    halfInnings:[], curRuns:0, curIdx:0,
+    homeScore:0, awayScore:0, active:true, ended:false
+  };
+}
+
+// ══ FIREBASE ══════════════════════════════════════════════════════════════════
+window.addEventListener('fb-ready', () => {
+  const fb = window._fb;
+  if (fb && fb.ok) {
+    S.fb=fb; S.fbOk=true; setSB('live');
+    fb.onValue(fb.ref(fb.db, DB_PATH), snap => {
+      const d=snap.val()||{};
+      // Normalize game data — Firebase converts arrays to objects, so we must restore them
+      if(d.game){
+        if(d.game.halfInnings&&!Array.isArray(d.game.halfInnings))
+          d.game.halfInnings=Object.values(d.game.halfInnings);
+        if(!d.game.halfInnings) d.game.halfInnings=[];
+      }
+      S.game    = d.game||null;
+      S.history = d.history ? Object.values(d.history).map(g=>{
+        if(g.halfInnings&&!Array.isArray(g.halfInnings)) g.halfInnings=Object.values(g.halfInnings);
+        return g;
+      }) : [];
+      renderAll();
+    });
+  } else {
+    setSB('local'); loadLocal(); renderAll();
+  }
+});
+setTimeout(()=>{ if(!window._fb){setSB('local');loadLocal();renderAll();} }, 4000);
+
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LK)||'{}');S.game=d.game||null;S.history=d.history||[];}catch(e){}}
+function persist(){
+  const d={game:S.game,history:S.history};
+  if(S.fbOk&&S.fb) S.fb.set(S.fb.ref(S.fb.db,DB_PATH),d).catch(e=>console.warn('FB:',e));
+  else try{localStorage.setItem(LK,JSON.stringify(d));}catch(e){}
+}
+function setSB(m){
+  document.getElementById('sdot').className='sdot'+(m==='live'?' live':' local');
+  document.getElementById('slbl').textContent=m==='live'?'Live':'Local';
+}
+
+// ══ ADMIN ═════════════════════════════════════════════════════════════════════
+function doAdmin(){
+  if(document.getElementById('pw').value===PW){
+    S.admin=true;
+    document.getElementById('admin-btn').textContent='✓ Admin';
+    document.getElementById('admin-btn').style.color='var(--or)';
+    document.getElementById('vbar').classList.remove('show');
+    closeM('m-admin'); renderAll();
+  } else {
+    const i=document.getElementById('pw');
+    i.style.borderColor='var(--rd)'; setTimeout(()=>i.style.borderColor='',1000);
+  }
+}
+
+// ══ GAME SETUP ════════════════════════════════════════════════════════════════
+function startGame(){
+  if(!S.admin){openM('m-admin');return;}
+  const n=new Date(), sv=document.getElementById('i-st').value;
+  let sm=n.getTime();
+  if(sv){const[h,m]=sv.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);sm=d.getTime();}
+  S.game=blankGame();
+  S.game.home     =document.getElementById('i-hm').value.trim()||'Clemson';
+  S.game.away     =document.getElementById('i-aw').value.trim()||'Opponent';
+  S.game.date     =document.getElementById('i-dt').value||n.toISOString().split('T')[0];
+  S.game.location =document.getElementById('i-lc').value.trim();
+  S.game.startMs  =sm;
+  S.game.startTime=sv||fmtT(n);
+  persist(); renderAll();
+}
+
+// ══ HALF INNING ═══════════════════════════════════════════════════════════════
+function adjR(d){
+  if(!S.game||!S.admin)return;
+  S.game.curRuns=Math.max(0,(S.game.curRuns||0)+d);
+  document.getElementById('run-n').textContent=S.game.curRuns;
+  persist();
+}
+
+function endHalf(){
+  if(!S.game||!S.admin)return;
+  const g=S.game, n=new Date(), idx=g.curIdx, runs=g.curRuns||0;
+  const prevMs=g.halfInnings.length>0?g.halfInnings[g.halfInnings.length-1].endMs:g.startMs;
+  const durMs=n.getTime()-prevMs;
+  const isTop=idx%2===0, innNum=Math.floor(idx/2)+1;
+  if(isTop) g.awayScore+=runs; else g.homeScore+=runs;
+  g.halfInnings.push({idx,innNum,isTop,endMs:n.getTime(),endTime:fmtT(n),durMs,runs});
+  g.curIdx=idx+1; g.curRuns=0;
+  // End of bot half — check for game over
+  if(!isTop){
+    if(innNum>=9 && g.homeScore!==g.awayScore){g.active=false;g.ended=true;}
+  }
+  persist(); renderAll(); debounceAI();
+}
+
+function isExtra(g){return g&&g.curIdx>=18;}
+
+// ══ UNDO / EDIT ═══════════════════════════════════════════════════════════════
+function openUndoM(){
+  if(!S.game||!S.game.halfInnings.length)return;
+  const last=S.game.halfInnings[S.game.halfInnings.length-1];
+  document.getElementById('undo-desc').textContent=`Last: ${hl(last.idx)} — ${last.runs} run(s), ended ${last.endTime}`;
+  document.getElementById('u-runs').value=last.runs;
+  document.getElementById('u-time').value=ms2ti(last.endMs);
+  openM('m-undo');
+}
+function doAdjust(){
+  if(!S.game||!S.game.halfInnings.length)return;
+  const g=S.game, last=g.halfInnings[g.halfInnings.length-1];
+  const nr=parseInt(document.getElementById('u-runs').value)||0, diff=nr-last.runs;
+  last.runs=nr; if(last.isTop) g.awayScore+=diff; else g.homeScore+=diff;
+  const tv=document.getElementById('u-time').value;
+  if(tv){
+    const nm=ti2ms(tv,last.endMs);
+    const pm=g.halfInnings.length>1?g.halfInnings[g.halfInnings.length-2].endMs:g.startMs;
+    last.endMs=nm; last.endTime=fmtT(new Date(nm)); last.durMs=Math.max(nm-pm,60000);
+  }
+  persist(); closeM('m-undo'); renderAll();
+}
+function doUndo(){
+  if(!S.game||!S.game.halfInnings.length)return;
+  const g=S.game, last=g.halfInnings.pop();
+  if(last.isTop) g.awayScore-=last.runs; else g.homeScore-=last.runs;
+  g.curIdx=last.idx; g.curRuns=0; g.active=true; g.ended=false;
+  persist(); closeM('m-undo'); renderAll();
+}
+function openEditHi(idx){
+  if(!S.admin)return;
+  const hi=S.game.halfInnings[idx]; S.editIdx=idx;
+  document.getElementById('edit-desc').textContent=`${hl(hi.idx)} — ended ${hi.endTime}`;
+  document.getElementById('e-runs').value=hi.runs;
+  document.getElementById('e-time').value=ms2ti(hi.endMs);
+  openM('m-edit');
+}
+function doEdit(){
+  if(S.editIdx<0||!S.game)return;
+  const g=S.game, hi=g.halfInnings[S.editIdx];
+  const nr=parseInt(document.getElementById('e-runs').value)||0, diff=nr-hi.runs;
+  hi.runs=nr; if(hi.isTop) g.awayScore+=diff; else g.homeScore+=diff;
+  const tv=document.getElementById('e-time').value;
+  if(tv){
+    const nm=ti2ms(tv,hi.endMs);
+    const pm=S.editIdx>0?g.halfInnings[S.editIdx-1].endMs:g.startMs;
+    hi.endMs=nm; hi.endTime=fmtT(new Date(nm)); hi.durMs=Math.max(nm-pm,60000);
+    if(S.editIdx+1<g.halfInnings.length){
+      const nx=g.halfInnings[S.editIdx+1]; nx.durMs=Math.max(nx.endMs-nm,60000);
+    }
+  }
+  persist(); closeM('m-edit'); renderAll();
+}
+
+// ══ STATISTICAL PROJECTION MODEL ══════════════════════════════════════════════
+/*
+  Multi-factor model:
+  1. Outlier removal (IQR + 2.2x median threshold)
+  2. Recency weighting (last 3 innings = 2.5x)
+  3. Inning-position adjustment: early innings (1-3) run ~15% longer than avg
+  4. Run-rate adjustment: each run scored adds ~45 seconds to inning duration
+  5. Blowout adjustment: if margin >= 5 after inning 6, reduce projection
+  6. Season blend: weighted toward current game as innings pile up
+  7. Floor: 1:45 min/half inning
+*/
+function computeModel(){
+  const g=S.game;
+  if(!g||!g.halfInnings.length) return null;
+
+  const durs=g.halfInnings.map(h=>h.durMs), n=durs.length;
+  const sorted=[...durs].sort((a,b)=>a-b);
+  const med=sorted[Math.floor(n/2)];
+  const q1=sorted[Math.floor(n/4)], q3=sorted[Math.floor(3*n/4)];
+  const outlierThresh=Math.max(med*2.2, q3+2*(q3-q1), med+8*60000);
+  const outlierSet=new Set(g.halfInnings.map((h,i)=>h.durMs>outlierThresh?i:-1).filter(i=>i>=0));
+
+  // Base: trimmed recency-weighted avg
+  const valid=g.halfInnings.filter((_,i)=>!outlierSet.has(i));
+  let baseMs;
+  if(!valid.length){ baseMs=med; }
+  else {
+    let s=0,w=0;
+    valid.forEach((h,ri)=>{const wt=ri>=valid.length-3?2.5:1;s+=h.durMs*wt;w+=wt;});
+    baseMs=s/w;
+  }
+
+  // Run-rate adjustment: each run/half-inning adds ~45 seconds
+  const totalRuns=g.halfInnings.reduce((a,h)=>a+h.runs,0);
+  const avgRunsPerHalf=totalRuns/n;
+  const runAdj=avgRunsPerHalf*45000; // ms per run per half-inning
+
+  // No-scoring bonus: if 0 runs after 3+ innings, scoring likely coming
+  const scoringBonus=totalRuns===0&&n>=3?90000:0;
+
+  // Blowout adjustment: big lead late = shorter remaining innings
+  const margin=Math.abs(g.homeScore-g.awayScore);
+  const innNum=Math.floor((g.curIdx)/2)+1;
+  const blowoutAdj=(margin>=5&&innNum>=6)?-30000:0; // -30s if blowout late
+
+  let avgMs=baseMs+runAdj+scoringBonus+blowoutAdj;
+
+  // Season blend (increases season weight as we log more games)
+  const seasonAvg=getSeasonAvg();
+  if(seasonAvg&&n>=3){
+    const gameWeight=Math.min(0.8, n/18); // more innings = trust current game more
+    avgMs=avgMs*gameWeight + seasonAvg*(1-gameWeight);
+  }
+
+  avgMs=Math.max(avgMs,105000); // floor 1:45
+
+  const comp=g.halfInnings.length, lastMs=g.halfInnings[comp-1].endMs;
+  const extra=isExtra(g), projTotal=extra?Math.max(g.curIdx+2,comp+2):18;
+  const proj=r=>lastMs+avgMs*Math.max(r,0);
+
+  const thr3=g.startMs+3*3600000, thr35=g.startMs+3.5*3600000;
+  return {
+    pFull:proj(projTotal-comp), p18:proj(18-comp),
+    p17:proj(Math.max(17-comp,0)), pRR:proj(Math.max(14-comp,0)),
+    thr3, thr35, avgMs, baseMs, comp, lastMs,
+    outlierSet, outlierThresh, totalRuns, avgRunsPerHalf,
+    runAdj, scoringBonus, blowoutAdj, seasonAvg,
+    extra, projTotal,
+    // Confidence: higher with more innings and lower outlier ratio
+    confidence: Math.min(95, Math.round(40 + (comp/18)*40 + (1-outlierSet.size/Math.max(n,1))*15))
+  };
+}
+
+function getSeasonAvg(){
+  const v=S.history.filter(g=>g.avgInnMs>0);
+  return v.length<2?null:v.reduce((a,b)=>a+b.avgInnMs,0)/v.length;
+}
+function avgAt(his){
+  if(!his.length) return 12*60000;
+  const s=[...his.map(h=>h.durMs)].sort((a,b)=>a-b), med=s[Math.floor(s.length/2)];
+  const v=his.filter(h=>h.durMs<=med*2.2), u=v.length?v:his;
+  let sum=0,w=0; u.forEach((h,i)=>{const wt=i>=u.length-3?2.5:1;sum+=h.durMs*wt;w+=wt;}); return sum/w;
+}
+
+// ══ AI PROJECTION (Claude API) ════════════════════════════════════════════════
+/*
+  Uses Claude to:
+  1. Interpret the statistical model output in context
+  2. Identify scoring/pace trends the math might miss
+  3. Output a structured projected end time with reasoning
+  4. Assign confidence and flag risk factors
+*/
+let aiTimer=null;
+function debounceAI(){ clearTimeout(aiTimer); aiTimer=setTimeout(runAI,2500); }
+
+async function runAI(){
+  const g=S.game; if(!g||g.halfInnings.length<2) return;
+  const m=computeModel(); if(!m) return;
+
+  // Update projections panel immediately with stats model
+  updateProjPanel(m);
+
+  // AI projection
+  const apEl=document.getElementById('ai-proj');
+  apEl.innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
+
+  // AI analysis
+  const aaEl=document.getElementById('ai-analysis');
+  aaEl.innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
+
+  const seasonCtx=S.history.length>0?`
+Season data (${S.history.length} games logged):
+- Avg game time: ${S.history.filter(x=>x.totalMs>0).length>0?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'}
+- Avg half-inning: ${getSeasonAvg()?p2t(getSeasonAvg()):'N/A'}
+- Run rules: ${S.history.filter(x=>x.runRule==='Yes').length}
+- Games vs ${g.away}: ${S.history.filter(x=>x.away===g.away||x.home===g.away).length}`:'No season data yet.';
+
+  const prompt=`You are an expert college baseball game pace analyst. Analyze this live game and provide two things.
+
+GAME DATA:
+- ${g.away} @ ${g.home} | ${g.date} | First pitch: ${g.startTime}
+- Current score: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore}
+- Half-innings completed: ${g.halfInnings.length} of ${m.projTotal} expected
+- Current half: ${hl(g.curIdx)}${m.extra?' (EXTRA INNINGS)':''}
+- Elapsed time: ${p2h(Date.now()-g.startMs)}
+
+HALF-INNING BREAKDOWN:
+${g.halfInnings.map(h=>`  ${hl(h.idx)}: ${p2t(h.durMs)} | ${h.runs} R`).join('\n')}
+
+STATISTICAL MODEL OUTPUT:
+- Raw avg half-inning: ${p2t(m.baseMs)}
+- Outliers removed: ${m.outlierSet.size} (threshold: ${p2t(m.outlierThresh)})
+- Run-rate adjustment: +${p2t(m.runAdj)} (${m.avgRunsPerHalf.toFixed(1)} runs/half avg)
+- Scoring bonus: ${m.scoringBonus>0?'+1:30 (no runs yet)':'none'}
+- Blowout adjustment: ${m.blowoutAdj<0?'-0:30 (large lead late game)':'none'}
+- Adjusted avg: ${p2t(m.avgMs)}
+- Statistical projected end (full game): ${fmtT(new Date(m.pFull))}
+- Model confidence: ${m.confidence}%
+
+${seasonCtx}
+
+Respond with ONLY a JSON object (no markdown, no explanation outside JSON):
+{
+  "projected_end": "H:MM PM",
+  "confidence_pct": 75,
+  "range_early": "H:MM PM",
+  "range_late": "H:MM PM",
+  "projection_reasoning": "One sentence explaining the projected end time.",
+  "pace_analysis": "2-3 sentences: is this game fast/slow/normal and why, any scoring trend affecting pace, what to watch for.",
+  "risk_factors": "One sentence on what could push the game later or end it sooner."
+}`;
+
+  try {
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const d=await r.json();
+    const raw=d.content?.map(c=>c.text||'').join('')||'';
+
+    let parsed;
+    try { parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); } catch(e){ parsed=null; }
+
+    if(parsed){
+      // AI Projection panel
+      apEl.innerHTML=`
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+          <div style="font-family:var(--fd);font-size:36px;font-weight:900;color:var(--or)">${parsed.projected_end}</div>
+          <div style="font-size:11px;color:var(--g2)">${parsed.range_early} – ${parsed.range_late}</div>
+        </div>
+        <div style="font-size:12px;color:var(--g2);margin-bottom:2px">${parsed.projection_reasoning}</div>`;
+
+      // Confidence bar
+      document.getElementById('conf-row').style.display='flex';
+      document.getElementById('conf-fill').style.width=`${parsed.confidence_pct}%`;
+      document.getElementById('conf-fill').style.background=parsed.confidence_pct>70?'var(--gn)':parsed.confidence_pct>45?'var(--or)':'var(--rd)';
+      document.getElementById('conf-val').textContent=`${parsed.confidence_pct}%`;
+
+      // Analysis panel
+      aaEl.innerHTML=`<div style="margin-bottom:6px">${parsed.pace_analysis}</div><div style="font-size:12px;color:var(--g3);border-top:1px solid rgba(255,255,255,.06);padding-top:6px;margin-top:6px">⚠ ${parsed.risk_factors}</div>`;
+    } else {
+      apEl.textContent='Projection: '+fmtT(new Date(m.pFull));
+      aaEl.textContent=raw.substring(0,300);
+    }
+  } catch(e){
+    apEl.innerHTML=`<div style="color:var(--g3)">AI unavailable. Stats projection: <b style="color:var(--w)">${fmtT(new Date(m.pFull))}</b></div>`;
+    aaEl.innerHTML='<span style="color:var(--g3)">AI analysis unavailable.</span>';
+  }
+}
+
+// ══ RENDER ════════════════════════════════════════════════════════════════════
+function renderAll(){
+  const g=S.game, has=g&&(g.active||g.ended);
+  document.getElementById('setup').style.display=has?'none':'block';
+  document.getElementById('active').style.display=has?'block':'none';
+
+  if(!has){
+    const n=new Date();
+    const di=document.getElementById('i-dt'); if(!di.value) di.value=n.toISOString().split('T')[0];
+    const ti=document.getElementById('i-st'); if(!ti.value) ti.value=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+    document.getElementById('i-hm').value='Clemson';
+    resetHdr(); renderSeason(); return;
+  }
+
+  // Header
+  document.getElementById('h-hm').textContent=abbr(g.home);
+  document.getElementById('h-hf').textContent=g.home;
+  document.getElementById('h-aw').textContent=abbr(g.away);
+  document.getElementById('h-af').textContent=g.away;
+  document.getElementById('h-sc').textContent=`${g.homeScore} – ${g.awayScore}`;
+  const ci=g.curIdx, inn=Math.floor(ci/2)+1;
+  document.getElementById('h-st').textContent=g.active?`${ci%2===0?'Top':'Bot'} ${inn}${inn>9?' ⚡':''}`:g.ended?'Final':'—';
+  document.getElementById('h-pip').className='pip'+(g.active?'':' off');
+
+  const xi=document.getElementById('xi-banner');
+  if(isExtra(g)&&g.active){xi.textContent=`⚡ Extra Innings — Inning ${inn}`;xi.classList.add('show');}
+  else xi.classList.remove('show');
+
+  document.getElementById('run-lbl').textContent=hl(g.curIdx);
+  document.getElementById('run-n').textContent=g.curRuns||0;
+
+  const actBar=document.getElementById('act-bar');
+  actBar.classList.toggle('show', S.admin&&g.active);
+
+  document.querySelectorAll('.ao').forEach(el=>el.classList.toggle('on',S.admin));
+  document.getElementById('vbar').classList.toggle('show',!S.admin);
+
+  renderDots(); renderSG(); renderHI(); updatePaceBar();
+  const m=computeModel(); if(m) updateProjPanel(m);
+  renderSeason();
+}
+
+function resetHdr(){
+  ['h-hm','h-hf','h-aw','h-af'].forEach((id,i)=>document.getElementById(id).textContent=['CU','Clemson','OPP','Opponent'][i]);
+  document.getElementById('h-sc').textContent='0 – 0';
+  document.getElementById('h-st').textContent='Pre-Game';
+  document.getElementById('h-pip').className='pip off';
+  document.getElementById('inn-dots').innerHTML='';
+  document.getElementById('pf').style.width='0%';
+  document.getElementById('pv').textContent='--:--';
+}
+
+function renderDots(){
+  const g=S.game, c=document.getElementById('inn-dots'); c.innerHTML='';
+  const total=Math.max(18,g.curIdx+2);
+  for(let i=0;i<total;i++){
+    if(i>0&&i%2===0){const s=mk('div','id sp');c.appendChild(s);}
+    const d=mk('div','id'+(i>=18?' ex':''));
+    const num=Math.floor(i/2)+1;
+    if(i<g.halfInnings.length){d.classList.add('dn');d.textContent=i%2===0?num:'·';}
+    else if(i===g.curIdx&&g.active){d.classList.add('ac');d.textContent=hl(i);}
+    else{d.textContent=i%2===0?num:'';}
+    c.appendChild(d);
+  }
+}
+
+function renderSG(){
+  const g=S.game, w=document.getElementById('sg'); w.innerHTML='';
+  const maxI=Math.max(9,Math.floor(g.curIdx/2)+1,g.halfInnings.length?g.halfInnings[g.halfInnings.length-1].innNum:0);
+  const cols=`42px repeat(${maxI},1fr) 28px`;
+  const hr=mk('div','sg-row'); hr.style.gridTemplateColumns=cols;
+  hr.appendChild(mkc('','sc h'));
+  for(let i=1;i<=maxI;i++) hr.appendChild(mkc(i,'sc h'+(i>9?' xt':'')));
+  hr.appendChild(mkc('R','sc h'));
+  w.appendChild(hr);
+  ['away','home'].forEach(side=>{
+    const ih=side==='home', row=mk('div','sg-row'); row.style.gridTemplateColumns=cols;
+    row.appendChild(mkc(abbr(ih?g.home:g.away),`sc t${ih?'':' a'}`));
+    let tot=0;
+    for(let i=0;i<maxI;i++){
+      const hIdx=i*2+(ih?1:0), hi=g.halfInnings.find(h=>h.idx===hIdx), isc=hIdx===g.curIdx&&g.active;
+      let cell;
+      if(hi){cell=mkc(hi.runs,`sc ${hi.runs>0?'rv':'zv'}`);tot+=hi.runs;}
+      else if(isc) cell=mkc('▸','sc cur');
+      else cell=mkc('','sc');
+      row.appendChild(cell);
+    }
+    row.appendChild(mkc(tot,'sc tot')); w.appendChild(row);
+  });
+}
+
+function renderHI(){
+  const g=S.game, c=document.getElementById('hi-rows'), m=computeModel(); c.innerHTML='';
+  if(!g.halfInnings.length){const e=mk('div','empty');e.textContent='Log starts when you end the first half-inning.';c.appendChild(e);return;}
+  [...g.halfInnings].reverse().forEach((hi,ri)=>{
+    const oi=g.halfInnings.length-1-ri, isOut=m&&m.outlierSet.has(oi), avg=m?m.avgMs:hi.durMs;
+    const row=mk('div','hi-r'+(isOut?' out':''));
+    const dur=p2t(hi.durMs), fast=hi.durMs<avg*.7, slow=hi.durMs>avg*1.5, ext=hi.innNum>9;
+    const compAt=g.halfInnings.length-ri;
+    const aAt=avgAt(g.halfInnings.slice(0,compAt));
+    const remAt=compAt<18?18-compAt:2;
+    const pStr=fmtT(new Date(hi.endMs+aAt*remAt));
+    const adjH=S.admin?`<button class="adj-btn" onclick="openEditHi(${oi})">✏️</button>`:'<span></span>';
+    row.innerHTML=`
+      <div class="hi-inn${ext?' ex':''}">${hl(hi.idx)}</div>
+      <div class="hi-time">${hi.endTime}${isOut?'<br><span class="out-tag">outlier</span>':''}</div>
+      <div class="hi-dur ${fast?'fast':slow?'slow':''}">${dur}${isOut?'*':''}</div>
+      <div class="hi-runs" style="color:${hi.runs>3?'var(--or)':hi.runs>0?'var(--w)':'var(--g3)'}">${hi.runs}</div>
+      <div>${adjH}</div>
+      <div class="hi-proj">${pStr}</div>`;
+    c.appendChild(row);
+  });
+}
+
+function updatePaceBar(){
+  const g=S.game, m=computeModel();
+  if(!m||!g){document.getElementById('pv').textContent='--:--';return;}
+  const pct=Math.min(100,((Date.now()-g.startMs)/(4*3600000))*100);
+  const ov=(m.pFull-m.thr3)/60000;
+  document.getElementById('pf').style.cssText=`width:${pct}%;background:${ov<-10?'var(--gn)':ov<20?'var(--or)':'var(--rd)'}`;
+  document.getElementById('pv').textContent=fmtT(new Date(m.pFull));
+}
+
+function updateProjPanel(m){
+  const g=S.game; if(!m||!g) return;
+  const fmt=ms=>fmtT(new Date(ms));
+  const vs=ms=>{const d=Math.round((ms-m.thr3)/60000);return d>0?`+${d}m over 3h`:`${Math.abs(d)}m under 3h`;};
+  const vc=ms=>(ms-m.thr3)/60000>20?'ov':'un';
+  document.getElementById('pj-9').textContent=fmt(m.pFull);
+  document.getElementById('pj-9s').textContent=vs(m.pFull); document.getElementById('pj-9s').className='pj-s '+vc(m.pFull);
+  document.getElementById('pj-n9').textContent=fmt(m.p17);
+  document.getElementById('pj-n9s').textContent=vs(m.p17); document.getElementById('pj-n9s').className='pj-s '+vc(m.p17);
+  document.getElementById('pj-rr').textContent=fmt(m.pRR);
+  document.getElementById('pj-rrs').textContent=vs(m.pRR);
+  document.getElementById('pj-3h').textContent=fmt(m.thr3);
+  document.getElementById('pj-330').textContent=fmt(m.thr35);
+  document.getElementById('st-avg').textContent=p2t(m.avgMs);
+  document.getElementById('st-done').textContent=m.comp;
+  document.getElementById('st-el').textContent=p2h(Date.now()-g.startMs);
+  renderChart(m);
+}
+
+function renderChart(m){
+  const g=S.game, c=document.getElementById('pace-chart'); c.innerHTML='';
+  if(!g||!g.halfInnings.length){c.innerHTML='<div class="empty">No data yet.</div>';return;}
+  const max=Math.max(...g.halfInnings.map(h=>h.durMs));
+  g.halfInnings.forEach((hi,i)=>{
+    const out=m.outlierSet.has(i), pct=Math.round((hi.durMs/max)*100);
+    const color=out?'var(--rd)':hi.durMs<m.avgMs*.8?'var(--gn)':'var(--or)';
+    const row=mk('div','pc-row');
+    row.innerHTML=`<div class="pc-l" style="${hi.innNum>9?'color:var(--puL)':''}">${hl(hi.idx)}</div><div class="pc-track"><div class="pc-fill" style="width:${pct}%;background:${color}"></div></div><div class="pc-v">${p2t(hi.durMs)}${out?'*':''}</div><div class="pc-r">${hi.runs>0?hi.runs+'R':''}</div>`;
+    c.appendChild(row);
+  });
+  const ar=mk('div','pc-row'); ar.style.marginTop='5px';
+  ar.innerHTML=`<div class="pc-l" style="color:var(--or)">AVG</div><div style="flex:1"></div><div class="pc-v" style="color:var(--or);font-weight:600">${p2t(m.avgMs)}</div><div class="pc-r"></div>`;
+  c.appendChild(ar);
+}
+
+// ══ END / NEW GAME ════════════════════════════════════════════════════════════
+function openEndM(){
+  const g=S.game; if(!g) return;
+  document.getElementById('el-hm').textContent=g.home+' Score';
+  document.getElementById('el-aw').textContent=g.away+' Score';
+  document.getElementById('f-hm').value=g.homeScore;
+  document.getElementById('f-aw').value=g.awayScore;
+  document.getElementById('f-in').value=g.halfInnings.length?g.halfInnings[g.halfInnings.length-1].innNum:9;
+  openM('m-end');
+}
+function doEnd(){
+  const g=S.game; if(!g) return;
+  const last=g.halfInnings[g.halfInnings.length-1];
+  S.history.push({
+    home:g.home, away:g.away, date:g.date, location:g.location,
+    homeScore:+document.getElementById('f-hm').value||g.homeScore,
+    awayScore:+document.getElementById('f-aw').value||g.awayScore,
+    innings:+document.getElementById('f-in').value||9,
+    runRule:document.getElementById('f-rr').value,
+    totalMs:last?last.endMs-g.startMs:0,
+    avgInnMs:g.halfInnings.length?g.halfInnings.reduce((a,b)=>a+b.durMs,0)/g.halfInnings.length:0,
+    startTime:g.startTime, halfInnings:g.halfInnings
+  });
+  S.game=null; persist(); closeM('m-end'); closeM('m-newgame'); renderAll(); tab('season');
+}
+function doNewGame(){
+  closeM('m-newgame');
+  if(S.game&&S.game.halfInnings.length>0) openEndM();
+  else{S.game=null;persist();renderAll();}
+}
+
+// ══ SEASON ════════════════════════════════════════════════════════════════════
+function renderSeason(){
+  const h=S.history;
+  document.getElementById('ss-g').textContent=h.length;
+  if(!h.length){
+    ['ss-t','ss-i'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('ss-r').textContent='0';
+    document.getElementById('hist-list').innerHTML='<div class="empty">No games logged yet.</div>';
+    return;
+  }
+  const vt=h.filter(g=>g.totalMs>0);
+  if(vt.length) document.getElementById('ss-t').textContent=p2h(vt.reduce((a,b)=>a+b.totalMs,0)/vt.length);
+  const vi=h.filter(g=>g.avgInnMs>0);
+  if(vi.length) document.getElementById('ss-i').textContent=p2t(vi.reduce((a,b)=>a+b.avgInnMs,0)/vi.length);
+  document.getElementById('ss-r').textContent=h.filter(g=>g.runRule==='Yes').length;
+  const list=document.getElementById('hist-list'); list.innerHTML='';
+  [...h].reverse().forEach(gh=>{
+    const ov=gh.totalMs?Math.round((gh.totalMs-3*3600000)/60000):null;
+    const ps=ov!==null?(ov>0?`+${ov}m`:`${ov}m`):'—';
+    const cls=ov===null?'b-gy':ov>30?'b-rd':ov<-10?'b-gn':'b-or';
+    const card=mk('div','hg');
+    card.innerHTML=`<div class="hg-top"><div class="hg-t">${gh.away} @ ${gh.home}</div><div class="hg-d">${gh.date||''}</div></div><div class="hg-s"><div class="hg-st">Score: <b>${gh.homeScore}–${gh.awayScore}</b></div><div class="hg-st">Time: <b>${gh.totalMs?p2h(gh.totalMs):'—'}</b></div><div class="hg-st">Inn: <b>${gh.innings||9}</b></div>${gh.runRule==='Yes'?'<span class="bdg b-or">Run Rule</span>':''}<span class="bdg ${cls}">vs 3hr: ${ps}</span></div>`;
+    list.appendChild(card);
+  });
+}
+
+// ══ TABS & MODALS ═════════════════════════════════════════════════════════════
+function tab(name){
+  const ns=['game','proj','season'];
+  document.querySelectorAll('.nt').forEach((b,i)=>b.classList.toggle('on',ns[i]===name));
+  document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('on',ns[i]===name));
+  if(name==='proj'){ const m=computeModel(); if(m)updateProjPanel(m); if(S.game&&S.game.halfInnings.length>=2)debounceAI(); }
+  if(name==='season') renderSeason();
+}
+function openM(id){ document.getElementById(id).classList.add('open'); }
+function closeM(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-wrap').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// ══ HELPERS ═══════════════════════════════════════════════════════════════════
+function fmtT(d){let h=d.getHours(),m=d.getMinutes();const ap=h>=12?'PM':'AM';h=h%12||12;return `${h}:${String(m).padStart(2,'0')} ${ap}`;}
+function p2t(ms){const s=Math.round(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+function p2h(ms){const m=Math.round(ms/60000);return m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;}
+function hl(idx){return `${idx%2===0?'T':'B'}${Math.floor(idx/2)+1}`;}
+function abbr(n){return (n||'').substring(0,4).toUpperCase();}
+function mk(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+function mkc(txt,cls){const c=mk('div',cls);c.textContent=txt;return c;}
+function ms2ti(ms){const d=new Date(ms);return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function ti2ms(ts,ref){const[h,m]=ts.split(':').map(Number),d=new Date(ref);d.setHours(h,m,0,0);if(d.getTime()<ref-7200000)d.setDate(d.getDate()+1);return d.getTime();}
+
+// ══ CLOCK ═════════════════════════════════════════════════════════════════════
+setInterval(()=>{
+  if(S.game&&S.game.active){
+    updatePaceBar();
+    const el=document.getElementById('st-el');
+    if(el&&S.game) el.textContent=p2h(Date.now()-S.game.startMs);
+  }
+},20000);
+
+// ══ BOOT ══════════════════════════════════════════════════════════════════════
+document.getElementById('i-hm').value='Clemson';
+</script>
+</body>
+</html>
