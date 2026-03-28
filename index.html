@@ -251,6 +251,30 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 .empty { text-align:center; padding:28px 20px; color:var(--g3); font-size:13px; }
 @media(max-width:360px){.pj-t{font-size:22px}.sc-main{font-size:36px}}
 
+/* ── SIDE BY SIDE PROJECTION ── */
+.side-by-side { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.side-by-side .dual-panel { margin-bottom:0; }
+.sbp-label { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--or); margin-bottom:6px; }
+.side-by-side .dual-proj-time { font-size:28px; }
+.side-by-side .dual-proj-range { font-size:10px; margin-bottom:6px; }
+.side-by-side .dual-reasoning { font-size:11px; margin-bottom:4px; }
+.side-by-side .dual-analysis { font-size:11px; }
+.side-by-side .dual-risk { font-size:10px; }
+.side-by-side .factor-row { font-size:10px; padding:3px 6px; }
+.side-by-side .dual-conf-row { gap:5px; margin-bottom:6px; }
+
+/* ── SCENARIO CARDS ── */
+.scenario-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; }
+.scenario-card { background:var(--bg2); border:2px solid rgba(255,255,255,.07); border-radius:var(--r); padding:11px 8px; text-align:center; transition:border-color .4s, background .4s; }
+.scenario-card.win-home { border-color:rgba(34,197,94,.6); background:rgba(34,197,94,.06); }
+.scenario-card.win-away { border-color:rgba(34,197,94,.6); background:rgba(34,197,94,.06); }
+.scenario-card.rr-grey { border-color:rgba(85,85,85,.4); opacity:.5; }
+.scenario-card.rr-yellow { border-color:rgba(234,179,8,.7); background:rgba(234,179,8,.05); }
+.scenario-card.rr-green { border-color:rgba(34,197,94,.7); background:rgba(34,197,94,.07); }
+.sc-label { font-family:var(--fd); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--g2); margin-bottom:4px; }
+.sc-time { font-family:var(--fd); font-size:22px; font-weight:900; line-height:1; color:var(--w); }
+.sc-sub { font-size:9px; color:var(--g2); margin-top:3px; line-height:1.4; }
+
 /* ── DUAL PROJECTION PANELS ── */
 .dual-panel { background:var(--bg2); border:1px solid rgba(255,255,255,.08); border-radius:var(--r); padding:14px; margin-bottom:10px; }
 .ai-panel-border { border-color:rgba(123,77,181,.4); background:rgba(82,45,128,.06); }
@@ -308,8 +332,8 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 <!-- NAV -->
 <div class="nav">
   <div class="nav-tabs">
-    <button class="nt on" onclick="tab('game')">Game</button>
-    <button class="nt" onclick="tab('proj')">Projection</button>
+    <button class="nt" onclick="tab('game')">Game</button>
+    <button class="nt on" onclick="tab('proj')">Projection</button>
     <button class="nt" onclick="tab('season')">Season</button>
   </div>
 </div>
@@ -318,7 +342,7 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 <div class="content">
 
 <!-- GAME PANE -->
-<div class="pane on" id="p-game">
+<div class="pane" id="p-game">
   <!-- SETUP -->
   <div id="setup">
     <div class="card">
@@ -378,45 +402,59 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 </div>
 
 <!-- PROJ PANE -->
-<div class="pane" id="p-proj">
+<div class="pane on" id="p-proj">
 
-  <!-- END TIME PROJECTION CARDS -->
-  <div class="sh">End Time Projections</div>
-  <div class="pg">
-    <div class="pjc feat"><div class="pj-l">Full Game</div><div class="pj-t" id="pj-9">--:--</div><div class="pj-s" id="pj-9s"></div></div>
-    <div class="pjc"><div class="pj-l">No Bot 9</div><div class="pj-t" id="pj-n9">--:--</div><div class="pj-s" id="pj-n9s"></div></div>
-    <div class="pjc"><div class="pj-l">Run Rule (B7)</div><div class="pj-t" id="pj-rr">--:--</div><div class="pj-s" id="pj-rrs"></div></div>
-    <div class="pjc"><div class="pj-l">3-Hr Target</div><div class="pj-t" id="pj-3h">--:--</div><div class="pj-s">3:30 below</div></div>
-  </div>
-  <div style="background:var(--bg2);border:1px solid rgba(255,255,255,.07);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
-    <div style="font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--g2)">3:30 Target</div>
-    <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--w)" id="pj-330">--:--</div>
-  </div>
+  <!-- LIVE OVERRUN ALERT -->
+  <div id="overrun-alert" style="display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:var(--r);padding:10px 14px;margin-bottom:10px;font-family:var(--fd);font-size:13px;font-weight:700;color:var(--rd);letter-spacing:.5px;text-align:center"></div>
 
-  <!-- STAT MODEL PROJECTION -->
-  <div class="sh">📊 Statistical Model</div>
-  <div class="dual-panel" id="stat-panel">
-    <div class="dual-proj-time" id="stat-proj-time">--:--</div>
-    <div class="dual-proj-range" id="stat-proj-range"></div>
-    <div class="dual-conf-row">
-      <div class="conf-l">Model confidence</div>
-      <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
-      <div class="conf-val" id="conf-val">—</div>
+  <!-- SIDE-BY-SIDE: STAT + AI -->
+  <div class="sh">📊 Statistical Model
+    <span id="ai-status-badge" style="margin-left:auto;font-family:var(--fm);font-size:10px;font-weight:400;color:var(--g3);letter-spacing:0">🤖 AI: ready</span>
+  </div>
+  <div class="side-by-side">
+    <!-- STAT PANEL -->
+    <div class="dual-panel" id="stat-panel">
+      <div class="sbp-label">📊 Stats</div>
+      <div class="dual-proj-time" id="stat-proj-time">--:--</div>
+      <div class="dual-proj-range" id="stat-proj-range"></div>
+      <div class="dual-conf-row">
+        <div class="conf-l">Confidence</div>
+        <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+        <div class="conf-val" id="conf-val">—</div>
+      </div>
+      <div class="dual-reasoning" id="stat-reasoning"><span style="color:var(--g3)">Log 2+ half-innings.</span></div>
+      <div class="dual-factors" id="stat-factors"></div>
     </div>
-    <div class="dual-reasoning" id="stat-reasoning"><span style="color:var(--g3)">Log 2+ half-innings.</span></div>
-    <div class="dual-factors" id="stat-factors"></div>
+    <!-- AI PANEL -->
+    <div class="dual-panel ai-panel-border" id="ai-panel">
+      <div class="sbp-label" style="color:var(--puL)">🤖 AI</div>
+      <div class="dual-proj-time" id="ai-proj-time" style="color:var(--puL)">--:--</div>
+      <div class="dual-proj-range" id="ai-proj-range"></div>
+      <div style="height:22px"></div><!-- spacer to align with conf bar -->
+      <div class="dual-reasoning" id="ai-proj-reasoning"><span style="color:var(--g3)">Updates after each half-inning.</span></div>
+      <div class="dual-analysis" id="ai-analysis-text"></div>
+      <div class="dual-risk" id="ai-risk-text"></div>
+    </div>
   </div>
 
-  <!-- AI PROJECTION -->
-  <div class="sh">🤖 Gemini AI Projection
-    <span id="ai-status-badge" style="margin-left:8px;font-family:var(--fm);font-size:10px;font-weight:400;color:var(--g3);letter-spacing:0">⬤ ready</span>
-  </div>
-  <div class="dual-panel ai-panel-border" id="ai-panel">
-    <div class="dual-proj-time" id="ai-proj-time" style="color:var(--puL)">--:--</div>
-    <div class="dual-proj-range" id="ai-proj-range"></div>
-    <div class="dual-reasoning" id="ai-proj-reasoning"><span style="color:var(--g3)">Log 2+ half-innings for AI projection.</span></div>
-    <div class="dual-analysis" id="ai-analysis-text"></div>
-    <div class="dual-risk" id="ai-risk-text"></div>
+  <!-- END TIME SCENARIOS -->
+  <div class="sh">End Time Scenarios</div>
+  <div class="scenario-grid">
+    <div class="scenario-card" id="sc-home">
+      <div class="sc-label" id="sc-home-label">Home Win</div>
+      <div class="sc-time" id="pj-9">--:--</div>
+      <div class="sc-sub" id="pj-9s"></div>
+    </div>
+    <div class="scenario-card" id="sc-away">
+      <div class="sc-label" id="sc-away-label">Away Win</div>
+      <div class="sc-time" id="pj-n9">--:--</div>
+      <div class="sc-sub" id="pj-n9s"></div>
+    </div>
+    <div class="scenario-card" id="sc-rr">
+      <div class="sc-label">Run Rule</div>
+      <div class="sc-time" id="pj-rr">--:--</div>
+      <div class="sc-sub" id="pj-rrs"></div>
+    </div>
   </div>
 
   <!-- CURRENT STATS -->
@@ -426,8 +464,6 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
     <div class="sp"><div class="sp-v" id="st-done">0</div><div class="sp-l">Completed</div></div>
     <div class="sp"><div class="sp-v" id="st-el">—</div><div class="sp-l">Elapsed</div></div>
   </div>
-
-  <!-- ADDITIONAL STATS ROW -->
   <div class="sp-row" style="margin-top:-4px">
     <div class="sp"><div class="sp-v" id="st-top-avg">—</div><div class="sp-l">Top Avg</div></div>
     <div class="sp"><div class="sp-v" id="st-bot-avg">—</div><div class="sp-l">Bot Avg</div></div>
@@ -861,68 +897,49 @@ function avgAt(his){
   let sum=0,w=0; u.forEach((h,i)=>{const wt=Math.exp(0.15*(i-(u.length-1)));sum+=h.durMs*wt;w+=wt;}); return sum/w;
 }
 
-// ══ GEMINI AI ANALYSIS ════════════════════════════════════════════════════════
-const GEMINI_KEY = 'AIzaSyAs1rP_tyig3pFdKT6BuFxVZkKBfZ3_tMA';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+// ══ OPENROUTER AI (free tier — no credit card needed) ════════════════════════
+// Get free key at openrouter.ai — free models: meta-llama/llama-3.1-8b-instruct:free
+// Restrict key to your domain at openrouter.ai/settings/api-keys
+const OR_KEY = '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'; // ← paste your key here
+const OR_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OR_MODEL = 'meta-llama/llama-3.1-8b-instruct:free'; // free, no usage limit
 
-let aiTimer=null, aiLastCalledMs=0, aiLastInningCount=-1, aiStatus='idle';
+let aiTimer=null, aiLastInningCount=-1, aiStatus='idle';
 
 function setAIStatus(status, msg){
   aiStatus=status;
   const badge=document.getElementById('ai-status-badge');
   if(!badge)return;
   const cfg={
-    idle:        {color:'var(--g3)',   text:'⬤ ready'},
-    loading:     {color:'var(--or)',   text:'⬤ thinking...'},
-    ok:          {color:'var(--gn)',   text:'⬤ updated '+( msg||'')},
-    error:       {color:'var(--rd)',   text:'⬤ error: '+(msg||'failed')},
-    rate_limited:{color:'var(--or)',   text:'⬤ rate limited — retrying'},
-    no_key:      {color:'var(--g3)',   text:'⬤ no key'},
+    idle:        {color:'var(--g3)',   text:'🤖 AI: ready'},
+    loading:     {color:'var(--or)',   text:'🤖 AI: thinking...'},
+    ok:          {color:'var(--gn)',   text:'🤖 AI: updated '+(msg||'')},
+    error:       {color:'var(--rd)',   text:'🤖 AI: '+(msg||'error')},
+    rate_limited:{color:'var(--or)',   text:'🤖 AI: cooling down'},
+    no_key:      {color:'var(--g3)',   text:'🤖 AI: no key configured'},
   };
   const c=cfg[status]||cfg.idle;
   badge.style.color=c.color; badge.textContent=c.text;
 }
 
+// Only called from endHalf — NOT on tab switch or timer
 function debounceAI(){
   clearTimeout(aiTimer);
-  const g=S.game; if(!g)return;
-  if(g.halfInnings.length===aiLastInningCount&&aiStatus==='ok')return;
-  aiTimer=setTimeout(runAI,5000);
+  aiTimer=setTimeout(runAI, 1500); // short delay so renderAll completes first
 }
-
-// ── BASEBALL KNOWLEDGE: stat model coefficients ──────────────────────────────
-// Empirical estimates from college baseball research:
-// • Avg half-inning: ~11-13 min (D1 college)
-// • Each run scored adds ~45-60s of pitching changes / base traffic
-// • Pitching change: ~3 min per change; expect ~0.8-1.2 changes/game in 7th+
-// • Mound visits slow inning: ~30s each
-// • Review/challenge: ~2-3 min per review
-// • Innings 1-3 longest (starters settling in, full lineups)
-// • Innings 7-9 with lead changes or tight games run ~15% longer
-// • Extra innings: each adds 8-12 min (runner on 2nd rule speeds them up slightly in college)
-// • Run-rule (10+ run lead): innings shorten by ~25% in 7th+ due to reduced at-bats
-// • Top-of-order effect: T1, T4, T7 slightly longer than others
 
 async function runAI(){
   const g=S.game; if(!g||g.halfInnings.length<2)return;
   const m=computeModel(); if(!m)return;
 
   updateProjPanel(m);
-  renderStatPanel(g,m);  // always render stat panel immediately
+  renderStatPanel(g,m);
 
-  if(!GEMINI_KEY||GEMINI_KEY==='YOUR_GEMINI_KEY_HERE'){setAIStatus('no_key');return;}
+  if(!OR_KEY||OR_KEY==='YOUR_OPENROUTER_KEY_HERE'){setAIStatus('no_key');return;}
 
-  const now=Date.now();
-  if(now-aiLastCalledMs<60000){
-    setAIStatus('rate_limited');
-    clearTimeout(aiTimer);
-    aiTimer=setTimeout(runAI,(60000-(now-aiLastCalledMs))+1000);
-    return;
-  }
-  aiLastCalledMs=now; aiLastInningCount=g.halfInnings.length;
+  aiLastInningCount=g.halfInnings.length;
   setAIStatus('loading');
 
-  // Set AI panel to loading state
   document.getElementById('ai-proj-time').textContent='...';
   document.getElementById('ai-proj-range').textContent='';
   document.getElementById('ai-proj-reasoning').innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
@@ -930,94 +947,65 @@ async function runAI(){
   document.getElementById('ai-risk-text').textContent='';
 
   const seasonCtx=S.history.length>0
-    ?`SEASON (${S.history.length} games): avg game time ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'} | avg half-inn ${m.seasonAvg?p2t(m.seasonAvg):'N/A'} | run rules: ${S.history.filter(x=>x.runRule==='Yes').length} | vs this opp: ${S.history.filter(x=>x.away===g.away||x.home===g.away).length} games`
-    :'SEASON: No prior data logged.';
+    ?`Season (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'} | avg half ${m.seasonAvg?p2t(m.seasonAvg):'N/A'} | run rules: ${S.history.filter(x=>x.runRule==='Yes').length}`
+    :'No prior season data.';
 
-  const trendDesc=m.trendSlope>5000?`SLOWING (+${Math.round(m.trendSlope/1000)}s/half trend)`
-    :m.trendSlope<-5000?`SPEEDING UP (${Math.round(m.trendSlope/1000)}s/half trend)`
-    :'STEADY (no significant trend)';
+  const trendDesc=m.trendSlope>5000?`SLOWING (+${Math.round(m.trendSlope/1000)}s/half)`
+    :m.trendSlope<-5000?`SPEEDING UP (${Math.round(m.trendSlope/1000)}s/half)`:'STEADY';
 
-  // Compute per-inning group averages for AI context
-  const earlyAvg=g.halfInnings.filter(h=>h.innNum<=3).map(h=>h.durMs);
-  const midAvg=g.halfInnings.filter(h=>h.innNum>=4&&h.innNum<=6).map(h=>h.durMs);
-  const lateAvg=g.halfInnings.filter(h=>h.innNum>=7).map(h=>h.durMs);
+  const earlyArr=g.halfInnings.filter(h=>h.innNum<=3).map(h=>h.durMs);
+  const midArr=g.halfInnings.filter(h=>h.innNum>=4&&h.innNum<=6).map(h=>h.durMs);
+  const lateArr=g.halfInnings.filter(h=>h.innNum>=7).map(h=>h.durMs);
   const avgOf=arr=>arr.length?p2t(arr.reduce((a,b)=>a+b,0)/arr.length):'N/A';
-
-  // Longest and shortest halves for AI context
   const sorted=[...g.halfInnings].sort((a,b)=>b.durMs-a.durMs);
-  const longestHalf=sorted[0], shortestHalf=sorted[sorted.length-1];
 
-  const prompt=`You are an expert college baseball pace-of-play analyst. Your job: project when this game will end, accounting for baseball-specific factors the pure math can't see.
+  const prompt=`You are a college baseball pace analyst. Project this game's end time based on the data below.
 
 GAME: ${g.away} @ ${g.home} | ${g.date} | First pitch: ${g.startTime}
-SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Current: ${hl(g.curIdx)}${m.extra?' ⚡ EXTRA INNINGS':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
-MARGIN: ${Math.abs(g.homeScore-g.awayScore)} runs | ${g.homeScore===g.awayScore?'TIED':g.homeScore>g.awayScore?g.home+' leads':g.away+' leads'}
+SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Current: ${hl(g.curIdx)}${m.extra?' EXTRA INNINGS':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
 
-HALF-INNING LOG (format: half:duration/runs):
-${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join('  ')}
+HALF-INNINGS: ${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join(' ')}
 
-PACE BREAKDOWN:
-- Early innings (1-3) avg: ${avgOf(earlyAvg.map(x=>x))} | Mid (4-6): ${avgOf(midAvg.map(x=>x))} | Late (7+): ${avgOf(lateAvg.map(x=>x))}
-- Top half avg: ${m.topHalves.length?p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length):'N/A'} | Bot half avg: ${m.botHalves.length?p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length):'N/A'}
-- Longest half: ${hl(longestHalf.idx)} at ${p2t(longestHalf.durMs)} (${longestHalf.runs}R)
-- Runs/half avg: ${m.avgRunsPerHalf.toFixed(2)} | Total runs: ${m.totalRuns}
-- Trend: ${trendDesc}
-- Outliers removed: ${m.outlierSet.size}
+PACE: Early(1-3) ${avgOf(earlyArr)} | Mid(4-6) ${avgOf(midArr)} | Late(7+) ${avgOf(lateArr)} | Top avg ${m.topHalves.length?p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length):'N/A'} | Bot avg ${m.botHalves.length?p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length):'N/A'} | Trend: ${trendDesc} | ${m.avgRunsPerHalf.toFixed(2)} R/half | Longest: ${hl(sorted[0].idx)} ${p2t(sorted[0].durMs)}
 
-STATISTICAL MODEL OUTPUT:
-- Adjusted avg half-inning: ${p2t(m.avgMs)}
-- Statistical projected end: ${fmtT(new Date(m.pFull))}
-- Range: ${fmtT(new Date(m.pFull - m.avgMs*Math.sqrt(Math.max(18-m.comp,1))*0.18))} – ${fmtT(new Date(m.pFull + m.avgMs*Math.sqrt(Math.max(18-m.comp,1))*0.18))}
-- Model confidence: ${m.confidence}%
-
+STAT MODEL: adj avg ${p2t(m.avgMs)} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}% | ${m.outlierSet.size} outliers removed
 ${seasonCtx}
 
-BASEBALL CONTEXT TO CONSIDER:
-- College baseball avg half-inning: ~11-13 min. Games usually 2:45-3:30.
-- Pitching changes: expect more in late innings (7th+), especially in close games. Each adds ~3 min.
-- Mound visits: ~30s each, up to 2-3 per inning in tight situations.
-- High-scoring innings (3+ runs) often involve pitching changes which compound duration.
-- If game is tied going into 7th+ or 9th, extra innings likely. College uses runner-on-2nd rule which speeds extras somewhat (~9-11 min/inning vs normal 12-13).
-- Run-rule (10+ run lead after 7th): game ends immediately — factor this if margin growing.
-- Late-inning close games: teams more likely to use bullpen aggressively, slowing pace.
-- If one team has scored most of their runs in a burst (one big inning), remaining innings may be faster.
+College baseball context: avg half ~11-13 min. Pitching changes add ~3min each (more frequent in 7th+). Close late games run longer. Run rule (10+ after 7th) ends game early.
 
-TASK: Analyze whether the statistical model's projection seems right given the baseball context above. Adjust up or down if there's a clear reason. Be specific.
-
-Reply ONLY with valid JSON, no markdown or extra text:
-{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence explaining your projected end time and why it differs (or agrees) with the stat model.","pace_analysis":"2-3 sentences: overall pace verdict, the single biggest baseball factor affecting this game's pace, and what to watch for in remaining innings.","risk_factors":"One sentence on the most likely scenario that pushes the game significantly later or ends it sooner than projected.","ai_vs_stat":"One sentence: does your projection agree with the stat model's ${fmtT(new Date(m.pFull))} or do you think it's off, and why?"}`;
+Reply ONLY with valid JSON, no markdown:
+{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence on your end time vs the stat model's ${fmtT(new Date(m.pFull))}.","pace_analysis":"2 sentences: pace verdict and biggest factor.","risk_factors":"One sentence on what most changes this projection."}`;
 
   try {
-    const r=await fetch(GEMINI_URL,{
+    const r=await fetch(OR_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:500}})
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${OR_KEY}`,
+        'HTTP-Referer':'https://github.com',
+        'X-Title':'CU Baseball Pace Tracker'
+      },
+      body:JSON.stringify({
+        model:OR_MODEL,
+        messages:[{role:'user',content:prompt}],
+        max_tokens:400,
+        temperature:0.3
+      })
     });
-    if(r.status===429){
-      setAIStatus('rate_limited');
-      clearTimeout(aiTimer); aiTimer=setTimeout(runAI,90000);
-      return;
-    }
-    if(!r.ok){
-      const eb=await r.json().catch(()=>({}));
-      setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,40));
-      return;
-    }
+    if(r.status===429){setAIStatus('rate_limited');return;}
+    if(!r.ok){const eb=await r.json().catch(()=>({}));setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,35));return;}
     const d=await r.json();
-    const raw=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const raw=d.choices?.[0]?.message?.content||'';
     let parsed; try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){parsed=null;}
-
-    if(!parsed){setAIStatus('error','bad response');return;}
+    if(!parsed){setAIStatus('error','bad JSON');return;}
 
     setAIStatus('ok',fmtT(new Date()));
-
     document.getElementById('ai-proj-time').textContent=parsed.projected_end||'--:--';
     document.getElementById('ai-proj-range').textContent=parsed.range_early&&parsed.range_late?`${parsed.range_early} – ${parsed.range_late}`:'';
     document.getElementById('ai-proj-reasoning').textContent=parsed.projection_reasoning||'';
-    document.getElementById('ai-analysis-text').innerHTML=(parsed.pace_analysis||'')+(parsed.ai_vs_stat?`<div style="margin-top:6px;font-size:12px;color:var(--g2);font-style:italic">vs. stat model: ${parsed.ai_vs_stat}</div>`:'');
+    document.getElementById('ai-analysis-text').textContent=parsed.pace_analysis||'';
     document.getElementById('ai-risk-text').textContent=parsed.risk_factors?`⚠ ${parsed.risk_factors}`:'';
-
-  } catch(e){setAIStatus('error',(e.message||'network').substring(0,40));}
+  } catch(e){setAIStatus('error',(e.message||'network').substring(0,35));}
 }
 
 // ── RENDER STAT MODEL PANEL ───────────────────────────────────────────────────
@@ -1217,16 +1205,45 @@ function updateProjPanel(m){
   const g=S.game; if(!m||!g) return;
   renderStatPanel(g,m);
   const fmt=ms=>fmtT(new Date(ms));
-  const vs=ms=>{const d=Math.round((ms-m.thr3)/60000);return d>0?`+${d}m over 3h`:`${Math.abs(d)}m under 3h`;};
+  const vs=ms=>{const d=Math.round((ms-m.thr3)/60000);return d>0?`+${d}m vs 3h`:`${Math.abs(d)}m under 3h`;};
   const vc=ms=>(ms-m.thr3)/60000>20?'ov':'un';
+
+  // Home Win (full 9, home bats in bot 9) = pFull
   document.getElementById('pj-9').textContent=fmt(m.pFull);
-  document.getElementById('pj-9s').textContent=vs(m.pFull); document.getElementById('pj-9s').className='pj-s '+vc(m.pFull);
+  document.getElementById('pj-9s').textContent=vs(m.pFull);
+  document.getElementById('pj-9s').className='sc-sub '+(vc(m.pFull)==='ov'?'pj-s ov':'pj-s un');
+
+  // Away Win (no bot 9) = p17
   document.getElementById('pj-n9').textContent=fmt(m.p17);
-  document.getElementById('pj-n9s').textContent=vs(m.p17); document.getElementById('pj-n9s').className='pj-s '+vc(m.p17);
+  document.getElementById('pj-n9s').textContent=vs(m.p17);
+  document.getElementById('pj-n9s').className='sc-sub '+(vc(m.p17)==='ov'?'pj-s ov':'pj-s un');
+
+  // Run Rule (bot 7 end) = pRR
   document.getElementById('pj-rr').textContent=fmt(m.pRR);
   document.getElementById('pj-rrs').textContent=vs(m.pRR);
-  document.getElementById('pj-3h').textContent=fmt(m.thr3);
-  document.getElementById('pj-330').textContent=fmt(m.thr35);
+  document.getElementById('pj-rrs').className='sc-sub '+(vc(m.pRR)==='ov'?'pj-s ov':'pj-s un');
+
+  // Scenario card labels
+  document.getElementById('sc-home-label').textContent=g.home+' Win';
+  document.getElementById('sc-away-label').textContent=g.away+' Win';
+
+  // Win highlighting: green border on the side that's winning
+  const hCard=document.getElementById('sc-home');
+  const aCard=document.getElementById('sc-away');
+  hCard.className='scenario-card';
+  aCard.className='scenario-card';
+  if(g.homeScore>g.awayScore) hCard.classList.add('win-home');
+  else if(g.awayScore>g.homeScore) aCard.classList.add('win-away');
+
+  // Run Rule card: grey if margin <7, yellow if 7-9, green if 10+
+  const margin=Math.abs(g.homeScore-g.awayScore);
+  const innNum=Math.floor(g.curIdx/2)+1;
+  const rrCard=document.getElementById('sc-rr');
+  rrCard.className='scenario-card';
+  if(margin>=10&&innNum>=7) rrCard.classList.add('rr-green');
+  else if(margin>=7&&innNum>=7) rrCard.classList.add('rr-yellow');
+  else rrCard.classList.add('rr-grey');
+
   document.getElementById('st-avg').textContent=p2t(m.avgMs);
   document.getElementById('st-done').textContent=m.comp;
   document.getElementById('st-el').textContent=p2h(Date.now()-g.startMs);
@@ -1568,9 +1585,7 @@ function tab(name){
   if(name==='proj'){
     const m=computeModel();
     if(m){ updateProjPanel(m); renderStatPanel(S.game,m); }
-    if(S.game&&S.game.halfInnings.length>=2&&(S.game.halfInnings.length!==aiLastInningCount||aiStatus==='idle')){
-      debounceAI();
-    }
+    // AI only fires from endHalf, not tab switch
   }
   if(name==='season') renderSeason();
 }
@@ -1595,6 +1610,7 @@ setInterval(()=>{
     updatePaceBar();
     const el=document.getElementById('st-el');
     if(el&&S.game) el.textContent=p2h(Date.now()-S.game.startMs);
+
     // Live half-inning timer
     const ht=document.getElementById('half-timer');
     if(ht&&S.game){
@@ -1603,15 +1619,42 @@ setInterval(()=>{
       const elapsed=Date.now()-prevMs;
       ht.textContent=`Half time: ${p2t(elapsed)}`;
       ht.style.display='block';
+
+      // Live overrun alert on projection tab
+      const alert=document.getElementById('overrun-alert');
+      if(alert){
+        const m=computeModel();
+        if(m&&g.halfInnings.length>=2){
+          const overMs=elapsed-m.avgMs;
+          if(overMs>120000){ // >2 min over expected avg
+            const innName=hl(g.curIdx);
+            const overMin=Math.round(overMs/60000*10)/10;
+            alert.textContent=`⏱ ${innName} is running long (+${overMin}m over avg) — projection updated`;
+            alert.style.display='block';
+            // Recompute proj with current elapsed baked in
+            const liveLastMs=g.halfInnings.length>0?g.halfInnings[g.halfInnings.length-1].endMs:g.startMs;
+            const liveProj=new Date(m.pFull + overMs * 0.6); // 60% of current overrun carries forward
+            document.getElementById('stat-proj-time').textContent=fmtT(liveProj);
+            const spread=m.avgMs*Math.sqrt(Math.max(18-m.comp,1))*0.18;
+            document.getElementById('stat-proj-range').textContent=
+              `${fmtT(new Date(liveProj-spread))} – ${fmtT(new Date(liveProj+spread))} range`;
+          } else {
+            alert.style.display='none';
+          }
+        } else if(alert) alert.style.display='none';
+      }
     }
   } else {
     const ht=document.getElementById('half-timer');
     if(ht) ht.style.display='none';
+    const alert=document.getElementById('overrun-alert');
+    if(alert) alert.style.display='none';
   }
 },5000);
 
 // ══ BOOT ══════════════════════════════════════════════════════════════════════
 document.getElementById('i-hm').value='Clemson';
+tab('proj'); // default to projection tab
 </script>
 </body>
 </html>
