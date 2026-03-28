@@ -897,14 +897,13 @@ function avgAt(his){
   let sum=0,w=0; u.forEach((h,i)=>{const wt=Math.exp(0.15*(i-(u.length-1)));sum+=h.durMs*wt;w+=wt;}); return sum/w;
 }
 
-// ══ OPENROUTER AI (free tier — no credit card needed) ════════════════════════
-// Get free key at openrouter.ai — free models: meta-llama/llama-3.1-8b-instruct:free
-// Restrict key to your domain at openrouter.ai/settings/api-keys
-const OR_KEY = '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'; // ← paste your key here
+// ══ OPENROUTER AI ════════════════════════════════════════════════════════════
+const OR_KEY = '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';
 const OR_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OR_MODEL = 'meta-llama/llama-3.1-8b-instruct:free'; // free, no usage limit
+const OR_MODEL = 'meta-llama/llama-3.1-8b-instruct:free';
+const AI_MIN_INTERVAL = 180000; // 3 minutes — safe for free tier
 
-let aiTimer=null, aiLastInningCount=-1, aiStatus='idle';
+let aiTimer=null, aiPollTimer=null, aiLastCalledMs=0, aiLastInningCount=-1, aiStatus='idle';
 
 function setAIStatus(status, msg){
   aiStatus=status;
@@ -922,11 +921,23 @@ function setAIStatus(status, msg){
   badge.style.color=c.color; badge.textContent=c.text;
 }
 
-// Only called from endHalf — NOT on tab switch or timer
+// Called from endHalf — fires immediately if 3min has passed, otherwise schedules
 function debounceAI(){
   clearTimeout(aiTimer);
-  aiTimer=setTimeout(runAI, 1500); // short delay so renderAll completes first
+  const wait=Math.max(0, AI_MIN_INTERVAL-(Date.now()-aiLastCalledMs));
+  aiTimer=setTimeout(runAI, wait+1500);
 }
+
+// 3-minute periodic poll — keeps AI fresh even between half-innings
+function startAIPoll(){
+  clearInterval(aiPollTimer);
+  aiPollTimer=setInterval(()=>{
+    if(S.game&&S.game.active&&S.game.halfInnings.length>=2){
+      if(Date.now()-aiLastCalledMs>=AI_MIN_INTERVAL) runAI();
+    }
+  }, AI_MIN_INTERVAL);
+}
+startAIPoll();
 
 async function runAI(){
   const g=S.game; if(!g||g.halfInnings.length<2)return;
@@ -938,6 +949,7 @@ async function runAI(){
   if(!OR_KEY||OR_KEY==='YOUR_OPENROUTER_KEY_HERE'){setAIStatus('no_key');return;}
 
   aiLastInningCount=g.halfInnings.length;
+  aiLastCalledMs=Date.now();
   setAIStatus('loading');
 
   document.getElementById('ai-proj-time').textContent='...';
