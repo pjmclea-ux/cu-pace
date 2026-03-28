@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1083,9 +1084,12 @@ function renderSeason(){
     const ps=ov!==null?(ov>0?`+${ov}m`:`${ov}m`):'—';
     const cls=ov===null?'b-gy':ov>30?'b-rd':ov<-10?'b-gn':'b-or';
     const card=mk('div','hg');
-    const delBtn=S.admin?`<button class="adj-btn" onclick="confirmDeleteGame(${realIdx})" title="Delete game" style="color:var(--rd);font-size:15px">🗑</button>`:'';
     const notesLine=(gh.notes||gh.location)?`<div class="hg-st" style="width:100%;color:var(--g3)">${[gh.location,gh.notes].filter(Boolean).join(' · ')}</div>`:'';
-    card.innerHTML=`<div class="hg-top"><div class="hg-t">${gh.away} @ ${gh.home}</div><div style="display:flex;align-items:center;gap:8px">${delBtn}<div class="hg-d">${gh.date||''}</div></div></div><div class="hg-s"><div class="hg-st">Score: <b>${gh.homeScore}–${gh.awayScore}</b></div><div class="hg-st">Time: <b>${gh.totalMs?p2h(gh.totalMs):'—'}</b></div><div class="hg-st">Inn: <b>${gh.innings||9}</b></div>${gh.runRule==='Yes'?'<span class="bdg b-or">Run Rule</span>':''}<span class="bdg ${cls}">vs 3hr: ${ps}</span>${notesLine}</div>`;
+    card.innerHTML=`<div class="hg-top"><div class="hg-t">${gh.away} @ ${gh.home}</div><div style="display:flex;align-items:center;gap:8px">${S.admin?'<button class="adj-btn hg-del" title="Delete game" style="color:var(--rd);font-size:16px;padding:2px 6px">🗑</button>':''}<div class="hg-d">${gh.date||''}</div></div></div><div class="hg-s"><div class="hg-st">Score: <b>${gh.homeScore}–${gh.awayScore}</b></div><div class="hg-st">Time: <b>${gh.totalMs?p2h(gh.totalMs):'—'}</b></div><div class="hg-st">Inn: <b>${gh.innings||9}</b></div>${gh.runRule==='Yes'?'<span class="bdg b-or">Run Rule</span>':''}<span class="bdg ${cls}">vs 3hr: ${ps}</span>${notesLine}</div>`;
+    if(S.admin){
+      const db=card.querySelector('.hg-del');
+      if(db) db.addEventListener('click',()=>confirmDeleteGame(realIdx));
+    }
     list.appendChild(card);
   });
 }
