@@ -250,6 +250,24 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 
 .empty { text-align:center; padding:28px 20px; color:var(--g3); font-size:13px; }
 @media(max-width:360px){.pj-t{font-size:22px}.sc-main{font-size:36px}}
+
+/* ── DUAL PROJECTION PANELS ── */
+.dual-panel { background:var(--bg2); border:1px solid rgba(255,255,255,.08); border-radius:var(--r); padding:14px; margin-bottom:10px; }
+.ai-panel-border { border-color:rgba(123,77,181,.4); background:rgba(82,45,128,.06); }
+.dual-proj-time { font-family:var(--fd); font-size:40px; font-weight:900; line-height:1; color:var(--or); margin-bottom:4px; }
+.dual-proj-range { font-family:var(--fm); font-size:11px; color:var(--g2); margin-bottom:10px; }
+.dual-conf-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.dual-reasoning { font-size:13px; font-weight:600; color:var(--w); line-height:1.55; margin-bottom:8px; }
+.dual-factors { display:flex; flex-direction:column; gap:4px; margin-top:4px; }
+.factor-row { display:flex; align-items:center; justify-content:space-between; font-size:11px; padding:4px 8px; background:rgba(255,255,255,.03); border-radius:5px; }
+.factor-label { color:var(--g2); }
+.factor-val { font-family:var(--fm); font-weight:600; }
+.factor-val.pos { color:var(--rd); }
+.factor-val.neg { color:var(--gn); }
+.factor-val.neu { color:var(--g2); }
+.dual-analysis { font-size:13px; color:var(--g1); line-height:1.6; margin-bottom:8px; }
+.dual-risk { font-size:11px; color:var(--g3); border-top:1px solid rgba(255,255,255,.05); padding-top:8px; margin-top:4px; line-height:1.5; }
+
 </style>
 </head>
 <body>
@@ -361,21 +379,8 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 
 <!-- PROJ PANE -->
 <div class="pane" id="p-proj">
-  <!-- Projection panel -->
-  <div class="ai-p">
-    <div class="ai-hdr">
-      <div class="ai-pip"></div>
-      <div class="ai-t" id="proj-panel-title">Pace Projection</div>
-      <div id="ai-status-badge" style="margin-left:auto;font-family:var(--fm);font-size:10px;color:var(--g3)">⬤ AI ready</div>
-    </div>
-    <div class="ai-body" id="ai-proj"><span style="color:var(--g3)">Log 2+ half-innings for projections.</span></div>
-    <div class="conf-row" id="conf-row" style="display:none">
-      <div class="conf-l">Confidence</div>
-      <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
-      <div class="conf-val" id="conf-val">—</div>
-    </div>
-  </div>
 
+  <!-- END TIME PROJECTION CARDS -->
   <div class="sh">End Time Projections</div>
   <div class="pg">
     <div class="pjc feat"><div class="pj-l">Full Game</div><div class="pj-t" id="pj-9">--:--</div><div class="pj-s" id="pj-9s"></div></div>
@@ -388,17 +393,45 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
     <div style="font-family:var(--fd);font-size:20px;font-weight:800;color:var(--w)" id="pj-330">--:--</div>
   </div>
 
-  <!-- Analysis panel -->
-  <div class="ai-p">
-    <div class="ai-hdr"><div class="ai-pip"></div><div class="ai-t">Live Pace Analysis</div></div>
-    <div class="ai-body" id="ai-analysis"><span style="color:var(--g3)">Analysis appears after 2+ half-innings.</span></div>
+  <!-- STAT MODEL PROJECTION -->
+  <div class="sh">📊 Statistical Model</div>
+  <div class="dual-panel" id="stat-panel">
+    <div class="dual-proj-time" id="stat-proj-time">--:--</div>
+    <div class="dual-proj-range" id="stat-proj-range"></div>
+    <div class="dual-conf-row">
+      <div class="conf-l">Model confidence</div>
+      <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+      <div class="conf-val" id="conf-val">—</div>
+    </div>
+    <div class="dual-reasoning" id="stat-reasoning"><span style="color:var(--g3)">Log 2+ half-innings.</span></div>
+    <div class="dual-factors" id="stat-factors"></div>
   </div>
 
+  <!-- AI PROJECTION -->
+  <div class="sh">🤖 Gemini AI Projection
+    <span id="ai-status-badge" style="margin-left:8px;font-family:var(--fm);font-size:10px;font-weight:400;color:var(--g3);letter-spacing:0">⬤ ready</span>
+  </div>
+  <div class="dual-panel ai-panel-border" id="ai-panel">
+    <div class="dual-proj-time" id="ai-proj-time" style="color:var(--puL)">--:--</div>
+    <div class="dual-proj-range" id="ai-proj-range"></div>
+    <div class="dual-reasoning" id="ai-proj-reasoning"><span style="color:var(--g3)">Log 2+ half-innings for AI projection.</span></div>
+    <div class="dual-analysis" id="ai-analysis-text"></div>
+    <div class="dual-risk" id="ai-risk-text"></div>
+  </div>
+
+  <!-- CURRENT STATS -->
   <div class="sh">Current Stats</div>
   <div class="sp-row">
     <div class="sp"><div class="sp-v" id="st-avg">—</div><div class="sp-l">Avg Half-Inn</div></div>
     <div class="sp"><div class="sp-v" id="st-done">0</div><div class="sp-l">Completed</div></div>
     <div class="sp"><div class="sp-v" id="st-el">—</div><div class="sp-l">Elapsed</div></div>
+  </div>
+
+  <!-- ADDITIONAL STATS ROW -->
+  <div class="sp-row" style="margin-top:-4px">
+    <div class="sp"><div class="sp-v" id="st-top-avg">—</div><div class="sp-l">Top Avg</div></div>
+    <div class="sp"><div class="sp-v" id="st-bot-avg">—</div><div class="sp-l">Bot Avg</div></div>
+    <div class="sp"><div class="sp-v" id="st-rph">—</div><div class="sp-l">R/Half</div></div>
   </div>
 
   <div class="sh">Half-Inning Durations</div>
@@ -829,217 +862,233 @@ function avgAt(his){
 }
 
 // ══ GEMINI AI ANALYSIS ════════════════════════════════════════════════════════
-// Free tier: 15 req/min, 1,500 req/day — https://aistudio.google.com/apikey
-const GEMINI_KEY = 'AIzaSyAZ12ICZLfkjEr15h6GzpXeBZ78-Mr0188'; // ← paste your key here
+const GEMINI_KEY = 'AIzaSyAs1rP_tyig3pFdKT6BuFxVZkKBfZ3_tMA';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
-// Rate limiting: only call AI once per inning end, never more than once per 60s
-let aiTimer = null;
-let aiLastCalledMs = 0;
-let aiLastInningCount = -1;
-let aiStatus = 'idle'; // 'idle' | 'loading' | 'ok' | 'error' | 'rate_limited' | 'no_key'
+let aiTimer=null, aiLastCalledMs=0, aiLastInningCount=-1, aiStatus='idle';
 
-function setAIStatus(status, msg) {
-  aiStatus = status;
-  const badge = document.getElementById('ai-status-badge');
-  if (!badge) return;
-  const configs = {
-    idle:         { color:'var(--g3)',  dot:'⬤', text:'AI ready' },
-    loading:      { color:'var(--or)',  dot:'⬤', text:'AI thinking...' },
-    ok:           { color:'var(--gn)',  dot:'⬤', text:'AI ✓ ' + (msg||'') },
-    error:        { color:'var(--rd)',  dot:'⬤', text:'AI error: ' + (msg||'failed') },
-    rate_limited: { color:'var(--or)',  dot:'⬤', text:'AI rate limited — retrying in 60s' },
-    no_key:       { color:'var(--g3)',  dot:'⬤', text:'Stats only (no Gemini key)' },
+function setAIStatus(status, msg){
+  aiStatus=status;
+  const badge=document.getElementById('ai-status-badge');
+  if(!badge)return;
+  const cfg={
+    idle:        {color:'var(--g3)',   text:'⬤ ready'},
+    loading:     {color:'var(--or)',   text:'⬤ thinking...'},
+    ok:          {color:'var(--gn)',   text:'⬤ updated '+( msg||'')},
+    error:       {color:'var(--rd)',   text:'⬤ error: '+(msg||'failed')},
+    rate_limited:{color:'var(--or)',   text:'⬤ rate limited — retrying'},
+    no_key:      {color:'var(--g3)',   text:'⬤ no key'},
   };
-  const c = configs[status] || configs.idle;
-  badge.style.color = c.color;
-  badge.textContent = c.dot + ' ' + c.text;
+  const c=cfg[status]||cfg.idle;
+  badge.style.color=c.color; badge.textContent=c.text;
 }
 
-function debounceAI() {
+function debounceAI(){
   clearTimeout(aiTimer);
-  // Only fire AI if the inning count actually changed — prevents tab-switch spam
-  const g = S.game;
-  if (!g) return;
-  const currentCount = g.halfInnings.length;
-  if (currentCount === aiLastInningCount && aiStatus === 'ok') return;
-  // Wait 5 seconds after end of half before calling (let user see stat result first)
-  aiTimer = setTimeout(runAI, 5000);
+  const g=S.game; if(!g)return;
+  if(g.halfInnings.length===aiLastInningCount&&aiStatus==='ok')return;
+  aiTimer=setTimeout(runAI,5000);
 }
 
-async function runAI() {
-  const g = S.game;
-  if (!g || g.halfInnings.length < 2) return;
-  const m = computeModel();
-  if (!m) return;
+// ── BASEBALL KNOWLEDGE: stat model coefficients ──────────────────────────────
+// Empirical estimates from college baseball research:
+// • Avg half-inning: ~11-13 min (D1 college)
+// • Each run scored adds ~45-60s of pitching changes / base traffic
+// • Pitching change: ~3 min per change; expect ~0.8-1.2 changes/game in 7th+
+// • Mound visits slow inning: ~30s each
+// • Review/challenge: ~2-3 min per review
+// • Innings 1-3 longest (starters settling in, full lineups)
+// • Innings 7-9 with lead changes or tight games run ~15% longer
+// • Extra innings: each adds 8-12 min (runner on 2nd rule speeds them up slightly in college)
+// • Run-rule (10+ run lead): innings shorten by ~25% in 7th+ due to reduced at-bats
+// • Top-of-order effect: T1, T4, T7 slightly longer than others
 
-  // Always render statistical analysis immediately — AI is a bonus on top
-  const apEl = document.getElementById('ai-proj');
-  const aaEl = document.getElementById('ai-analysis');
-  renderStatAnalysis(g, m, apEl, aaEl);
+async function runAI(){
+  const g=S.game; if(!g||g.halfInnings.length<2)return;
+  const m=computeModel(); if(!m)return;
 
-  // No key configured
-  if (!GEMINI_KEY || GEMINI_KEY === 'YOUR_GEMINI_KEY_HERE') {
-    setAIStatus('no_key');
-    return;
-  }
+  updateProjPanel(m);
+  renderStatPanel(g,m);  // always render stat panel immediately
 
-  // Rate limit: don't call more than once per 60 seconds
-  const now = Date.now();
-  if (now - aiLastCalledMs < 60000) {
-    // Schedule retry after the cooldown expires
-    const wait = 60000 - (now - aiLastCalledMs);
+  if(!GEMINI_KEY||GEMINI_KEY==='YOUR_GEMINI_KEY_HERE'){setAIStatus('no_key');return;}
+
+  const now=Date.now();
+  if(now-aiLastCalledMs<60000){
     setAIStatus('rate_limited');
     clearTimeout(aiTimer);
-    aiTimer = setTimeout(runAI, wait + 1000);
+    aiTimer=setTimeout(runAI,(60000-(now-aiLastCalledMs))+1000);
     return;
   }
-
-  // Mark that we're starting a call
-  aiLastCalledMs = now;
-  aiLastInningCount = g.halfInnings.length;
+  aiLastCalledMs=now; aiLastInningCount=g.halfInnings.length;
   setAIStatus('loading');
 
-  const seasonCtx = S.history.length > 0
-    ? `Season context (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length ? p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length) : 'N/A'}, avg half-inn ${m.seasonAvg ? p2t(m.seasonAvg) : 'N/A'}, ${S.history.filter(x=>x.runRule==='Yes').length} run rules.`
-    : 'No prior season data.';
+  // Set AI panel to loading state
+  document.getElementById('ai-proj-time').textContent='...';
+  document.getElementById('ai-proj-range').textContent='';
+  document.getElementById('ai-proj-reasoning').innerHTML='<div class="ai-thinking"><div class="ai-d"></div><div class="ai-d"></div><div class="ai-d"></div></div>';
+  document.getElementById('ai-analysis-text').textContent='';
+  document.getElementById('ai-risk-text').textContent='';
 
-  const trendDesc = m.trendSlope > 5000
-    ? `slowing (+${Math.round(m.trendSlope/1000)}s/half trend)`
-    : m.trendSlope < -5000
-      ? `speeding up (${Math.round(m.trendSlope/1000)}s/half trend)`
-      : 'steady pace';
+  const seasonCtx=S.history.length>0
+    ?`SEASON (${S.history.length} games): avg game time ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'} | avg half-inn ${m.seasonAvg?p2t(m.seasonAvg):'N/A'} | run rules: ${S.history.filter(x=>x.runRule==='Yes').length} | vs this opp: ${S.history.filter(x=>x.away===g.away||x.home===g.away).length} games`
+    :'SEASON: No prior data logged.';
 
-  const prompt = `You are a college baseball pace-of-play analyst. Be concise and specific. Use the statistical model output as your anchor.
+  const trendDesc=m.trendSlope>5000?`SLOWING (+${Math.round(m.trendSlope/1000)}s/half trend)`
+    :m.trendSlope<-5000?`SPEEDING UP (${Math.round(m.trendSlope/1000)}s/half trend)`
+    :'STEADY (no significant trend)';
 
-GAME: ${g.away} @ ${g.home} | ${g.date} | First pitch ${g.startTime}
-SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Half: ${hl(g.curIdx)}${m.extra?' (EXTRAS)':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
-HALF-INNINGS: ${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join(' ')}
-STAT MODEL: base avg ${p2t(m.baseMs)} | adjusted avg ${p2t(m.avgMs)} | trend ${trendDesc} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}%
+  // Compute per-inning group averages for AI context
+  const earlyAvg=g.halfInnings.filter(h=>h.innNum<=3).map(h=>h.durMs);
+  const midAvg=g.halfInnings.filter(h=>h.innNum>=4&&h.innNum<=6).map(h=>h.durMs);
+  const lateAvg=g.halfInnings.filter(h=>h.innNum>=7).map(h=>h.durMs);
+  const avgOf=arr=>arr.length?p2t(arr.reduce((a,b)=>a+b,0)/arr.length):'N/A';
+
+  // Longest and shortest halves for AI context
+  const sorted=[...g.halfInnings].sort((a,b)=>b.durMs-a.durMs);
+  const longestHalf=sorted[0], shortestHalf=sorted[sorted.length-1];
+
+  const prompt=`You are an expert college baseball pace-of-play analyst. Your job: project when this game will end, accounting for baseball-specific factors the pure math can't see.
+
+GAME: ${g.away} @ ${g.home} | ${g.date} | First pitch: ${g.startTime}
+SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Current: ${hl(g.curIdx)}${m.extra?' ⚡ EXTRA INNINGS':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
+MARGIN: ${Math.abs(g.homeScore-g.awayScore)} runs | ${g.homeScore===g.awayScore?'TIED':g.homeScore>g.awayScore?g.home+' leads':g.away+' leads'}
+
+HALF-INNING LOG (format: half:duration/runs):
+${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join('  ')}
+
+PACE BREAKDOWN:
+- Early innings (1-3) avg: ${avgOf(earlyAvg.map(x=>x))} | Mid (4-6): ${avgOf(midAvg.map(x=>x))} | Late (7+): ${avgOf(lateAvg.map(x=>x))}
+- Top half avg: ${m.topHalves.length?p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length):'N/A'} | Bot half avg: ${m.botHalves.length?p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length):'N/A'}
+- Longest half: ${hl(longestHalf.idx)} at ${p2t(longestHalf.durMs)} (${longestHalf.runs}R)
+- Runs/half avg: ${m.avgRunsPerHalf.toFixed(2)} | Total runs: ${m.totalRuns}
+- Trend: ${trendDesc}
+- Outliers removed: ${m.outlierSet.size}
+
+STATISTICAL MODEL OUTPUT:
+- Adjusted avg half-inning: ${p2t(m.avgMs)}
+- Statistical projected end: ${fmtT(new Date(m.pFull))}
+- Range: ${fmtT(new Date(m.pFull - m.avgMs*Math.sqrt(Math.max(18-m.comp,1))*0.18))} – ${fmtT(new Date(m.pFull + m.avgMs*Math.sqrt(Math.max(18-m.comp,1))*0.18))}
+- Model confidence: ${m.confidence}%
+
 ${seasonCtx}
 
-Reply ONLY with valid JSON, no markdown:
-{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence on why this end time.","pace_analysis":"2 sentences: overall pace verdict and the single biggest factor driving it.","risk_factors":"One sentence: the most likely thing that changes this projection."}`;
+BASEBALL CONTEXT TO CONSIDER:
+- College baseball avg half-inning: ~11-13 min. Games usually 2:45-3:30.
+- Pitching changes: expect more in late innings (7th+), especially in close games. Each adds ~3 min.
+- Mound visits: ~30s each, up to 2-3 per inning in tight situations.
+- High-scoring innings (3+ runs) often involve pitching changes which compound duration.
+- If game is tied going into 7th+ or 9th, extra innings likely. College uses runner-on-2nd rule which speeds extras somewhat (~9-11 min/inning vs normal 12-13).
+- Run-rule (10+ run lead after 7th): game ends immediately — factor this if margin growing.
+- Late-inning close games: teams more likely to use bullpen aggressively, slowing pace.
+- If one team has scored most of their runs in a burst (one big inning), remaining innings may be faster.
+
+TASK: Analyze whether the statistical model's projection seems right given the baseball context above. Adjust up or down if there's a clear reason. Be specific.
+
+Reply ONLY with valid JSON, no markdown or extra text:
+{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence explaining your projected end time and why it differs (or agrees) with the stat model.","pace_analysis":"2-3 sentences: overall pace verdict, the single biggest baseball factor affecting this game's pace, and what to watch for in remaining innings.","risk_factors":"One sentence on the most likely scenario that pushes the game significantly later or ends it sooner than projected.","ai_vs_stat":"One sentence: does your projection agree with the stat model's ${fmtT(new Date(m.pFull))} or do you think it's off, and why?"}`;
 
   try {
-    const r = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 400 }
-      })
+    const r=await fetch(GEMINI_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:500}})
     });
-
-    // Handle rate limit response explicitly
-    if (r.status === 429) {
+    if(r.status===429){
       setAIStatus('rate_limited');
-      // Retry after 90 seconds
-      clearTimeout(aiTimer);
-      aiTimer = setTimeout(runAI, 90000);
+      clearTimeout(aiTimer); aiTimer=setTimeout(runAI,90000);
       return;
     }
-
-    if (!r.ok) {
-      const errBody = await r.json().catch(()=>({}));
-      const errMsg = errBody?.error?.message || `HTTP ${r.status}`;
-      setAIStatus('error', errMsg);
+    if(!r.ok){
+      const eb=await r.json().catch(()=>({}));
+      setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,40));
       return;
     }
+    const d=await r.json();
+    const raw=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    let parsed; try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){parsed=null;}
 
-    const d = await r.json();
-    const raw = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    let parsed;
-    try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch(e) { parsed = null; }
+    if(!parsed){setAIStatus('error','bad response');return;}
 
-    if (!parsed) {
-      setAIStatus('error', 'bad JSON response');
-      return;
-    }
+    setAIStatus('ok',fmtT(new Date()));
 
-    // Success — update UI with AI result
-    setAIStatus('ok', `updated ${fmtT(new Date())}`);
+    document.getElementById('ai-proj-time').textContent=parsed.projected_end||'--:--';
+    document.getElementById('ai-proj-range').textContent=parsed.range_early&&parsed.range_late?`${parsed.range_early} – ${parsed.range_late}`:'';
+    document.getElementById('ai-proj-reasoning').textContent=parsed.projection_reasoning||'';
+    document.getElementById('ai-analysis-text').innerHTML=(parsed.pace_analysis||'')+(parsed.ai_vs_stat?`<div style="margin-top:6px;font-size:12px;color:var(--g2);font-style:italic">vs. stat model: ${parsed.ai_vs_stat}</div>`:'');
+    document.getElementById('ai-risk-text').textContent=parsed.risk_factors?`⚠ ${parsed.risk_factors}`:'';
 
-    apEl.innerHTML = `
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
-        <div style="font-family:var(--fd);font-size:36px;font-weight:900;color:var(--or)">${parsed.projected_end}</div>
-        <div style="font-size:11px;color:var(--g2)">${parsed.range_early} – ${parsed.range_late}</div>
-      </div>
-      <div style="font-size:12px;color:var(--g2)">${parsed.projection_reasoning}</div>`;
-
-    document.getElementById('conf-row').style.display = 'flex';
-    document.getElementById('conf-fill').style.width = `${m.confidence}%`;
-    document.getElementById('conf-fill').style.background = m.confidence>70?'var(--gn)':m.confidence>45?'var(--or)':'var(--rd)';
-    document.getElementById('conf-val').textContent = `${m.confidence}%`;
-
-    aaEl.innerHTML = `<div style="margin-bottom:6px">${parsed.pace_analysis}</div>
-      <div style="font-size:12px;color:var(--g3);border-top:1px solid rgba(255,255,255,.06);padding-top:6px;margin-top:6px">⚠ ${parsed.risk_factors}</div>`;
-
-  } catch(e) {
-    setAIStatus('error', e.message || 'network error');
-    // Stat fallback already rendered above — nothing more needed
-  }
+  } catch(e){setAIStatus('error',(e.message||'network').substring(0,40));}
 }
 
-// Pure statistical analysis — rendered immediately, also serves as fallback
-function renderStatAnalysis(g, m, apEl, aaEl){
+// ── RENDER STAT MODEL PANEL ───────────────────────────────────────────────────
+function renderStatPanel(g, m){
   const n=g.halfInnings.length;
+  if(!n||!m)return;
   const projOverMin=Math.round((m.pFull-(g.startMs+3*3600000))/60000);
-  const paceColor=projOverMin>20?'var(--rd)':projOverMin>5?'var(--or)':'var(--gn)';
-  const paceWord=projOverMin>25?'running long':projOverMin>10?'slightly slow':projOverMin<-20?'ahead of pace':projOverMin<-5?'slightly fast':'on pace';
+  const paceColor=projOverMin>25?'var(--rd)':projOverMin>10?'var(--or)':'var(--gn)';
+  const paceWord=projOverMin>30?'running long':projOverMin>15?'slightly slow':projOverMin<-20?'well ahead of pace':projOverMin<-5?'slightly fast':'on 3-hour pace';
 
-  // Trend description
-  let trendLine='';
-  if(m.trendSlope>6000) trendLine=`Innings are <b style="color:var(--rd)">slowing down</b> (+${Math.round(m.trendSlope/1000)}s/half trend).`;
-  else if(m.trendSlope<-6000) trendLine=`Innings are <b style="color:var(--gn)">speeding up</b> (${Math.round(m.trendSlope/1000)}s/half trend).`;
-  else trendLine=`Pace has been <b style="color:var(--w)">steady</b> throughout.`;
-
-  // Scoring note
-  let scoreLine='';
-  if(m.avgRunsPerHalf>2.0) scoreLine=` High scoring (${m.avgRunsPerHalf.toFixed(1)} R/half avg) is adding time to each inning.`;
-  else if(m.avgRunsPerHalf<0.5&&n>=4) scoreLine=` Low-scoring game (${m.avgRunsPerHalf.toFixed(1)} R/half) is keeping innings short.`;
-
-  // Season comparison
-  let seasonLine='';
-  if(m.seasonAvg){
-    const vsS=Math.round((m.avgMs-m.seasonAvg)/m.seasonAvg*100);
-    if(Math.abs(vsS)>8) seasonLine=` Running ${Math.abs(vsS)}% ${vsS>0?'slower':'faster'} than your ${p2t(m.seasonAvg)} season avg.`;
-  }
-
-  // Risk flags
-  const risks=[];
-  if(m.tightLateAdj>0) risks.push('Close game late — expect full innings and possible extras');
-  if(m.trendSlope>8000) risks.push(`Slowing trend — game could push ${Math.round(m.trendSlope/1000*3)}+ min longer than projected`);
-  if(m.outlierSet.size>=2) risks.push(`${m.outlierSet.size} outlier innings removed — data is noisy`);
-  if(m.extra) risks.push(`Extra innings — each adds ~${p2t(m.avgMs)}`);
-  if(m.blowoutAdj<0) risks.push(`Large lead (${Math.abs(g.homeScore-g.awayScore)} runs) — shorter remaining innings likely`);
-  if(m.scoringBonus>0) risks.push('No runs yet — first scoring burst will likely extend innings');
-
-  // Projection range (±1 std dev approximation)
+  // Projection range (±1 approx std dev)
   const spread=m.avgMs*Math.sqrt(Math.max(18-n,1))*0.18;
   const earlyEnd=fmtT(new Date(m.pFull-spread));
   const lateEnd=fmtT(new Date(m.pFull+spread));
 
+  document.getElementById('stat-proj-time').textContent=fmtT(new Date(m.pFull));
+  document.getElementById('stat-proj-time').style.color=paceColor;
+  document.getElementById('stat-proj-range').textContent=`${earlyEnd} – ${lateEnd} range`;
+
   // Confidence bar
-  document.getElementById('conf-row').style.display='flex';
   document.getElementById('conf-fill').style.width=`${m.confidence}%`;
   document.getElementById('conf-fill').style.background=m.confidence>70?'var(--gn)':m.confidence>45?'var(--or)':'var(--rd)';
   document.getElementById('conf-val').textContent=`${m.confidence}%`;
 
-  apEl.innerHTML=`
-    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
-      <div style="font-family:var(--fd);font-size:36px;font-weight:900;color:${paceColor}">${fmtT(new Date(m.pFull))}</div>
-      <div style="font-size:11px;color:var(--g2)">${earlyEnd} – ${lateEnd}</div>
-    </div>
-    <div style="font-size:12px;color:var(--g2)">
-      <span style="color:${paceColor};font-weight:600">${paceWord.charAt(0).toUpperCase()+paceWord.slice(1)}</span> — 
-      ${projOverMin>0?'+'+projOverMin:projOverMin}m vs 3hr · avg ${p2t(m.avgMs)}/half · ${n} halves logged
-    </div>`;
+  // Build human-readable reasoning
+  const parts=[];
+  if(m.trendSlope>6000) parts.push(`innings slowing (+${Math.round(m.trendSlope/1000)}s/half trend)`);
+  else if(m.trendSlope<-6000) parts.push(`innings speeding up (${Math.round(m.trendSlope/1000)}s/half)`);
+  if(m.avgRunsPerHalf>2.0) parts.push(`high-scoring game (${m.avgRunsPerHalf.toFixed(1)} R/half adding ~${Math.round(m.runAdj/60000*10)/10}min/half)`);
+  else if(m.avgRunsPerHalf<0.4&&n>=4) parts.push(`low scoring (${m.avgRunsPerHalf.toFixed(1)} R/half keeping innings quick)`);
+  if(m.scoringBonus>0) parts.push('no runs yet — scoring likely to extend innings soon');
+  if(m.blowoutAdj<0) parts.push(`${Math.abs(g.homeScore-g.awayScore)}-run lead shortening remaining innings`);
+  if(m.tightLateAdj>0) parts.push('close game late — full innings and possible extras risk');
+  if(m.splitAdj>5000) parts.push(`bot halves averaging ${p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length)} vs top halves ${p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length)}`);
+  if(m.seasonAvg) parts.push(`blended with ${p2t(m.seasonAvg)} season avg (${S.history.length} games)`);
+  if(m.outlierSet.size>0) parts.push(`${m.outlierSet.size} outlier half(s) excluded from avg`);
 
-  aaEl.innerHTML=`
-    <div style="margin-bottom:8px;line-height:1.7">${trendLine}${scoreLine}${seasonLine}</div>
-    ${risks.length?`<div style="display:flex;flex-direction:column;gap:4px">${risks.map(r=>`<div style="font-size:11px;color:var(--g3);padding:4px 8px;background:rgba(255,255,255,.03);border-radius:4px;border-left:2px solid ${r.includes('Large lead')||r.includes('shorter')?'var(--gn)':'var(--rd)'}">⚠ ${r}</div>`).join('')}</div>`:'<div style="font-size:12px;color:var(--g3)">No significant risk factors detected.</div>'}`;
+  const reasoningText = parts.length
+    ? `<span style="color:${paceColor};font-weight:700">${paceWord.charAt(0).toUpperCase()+paceWord.slice(1)}</span> — ${parts.slice(0,3).join('; ')}.`
+    : `<span style="color:${paceColor};font-weight:700">${paceWord.charAt(0).toUpperCase()+paceWord.slice(1)}</span> — pace tracking steadily at ${p2t(m.avgMs)}/half.`;
+  document.getElementById('stat-reasoning').innerHTML=reasoningText;
+
+  // Factor breakdown rows
+  const factors=[
+    {label:'Base avg (recency-weighted)', val:p2t(m.baseMs), sign:0},
+    {label:'Run-rate adjustment', val:(m.runAdj>0?'+':'')+p2t(m.runAdj)+'/half', sign:m.runAdj>0?1:0},
+    {label:'Trend adjustment', val:(m.trendAdj>=0?'+':'')+Math.round(m.trendAdj/60000*10)/10+'min total', sign:m.trendAdj>5000?1:m.trendAdj<-5000?-1:0},
+    {label:'Blowout adjustment', val:m.blowoutAdj<0?Math.round(m.blowoutAdj/60000*10)/10+'min/half':'none', sign:m.blowoutAdj<0?-1:0},
+    {label:'Close game late', val:m.tightLateAdj>0?'+'+p2t(m.tightLateAdj)+'/half':'none', sign:m.tightLateAdj>0?1:0},
+    {label:'No-scoring bonus', val:m.scoringBonus>0?'+1:30/half applied':'none', sign:m.scoringBonus>0?1:0},
+    {label:'Top/bot split diff', val:m.topHalves.length>=2&&m.botHalves.length>=2?p2t(Math.abs(m.splitAdj))+' adj':'N/A', sign:0},
+    {label:'Season blend', val:m.seasonAvg?p2t(m.seasonAvg)+' ('+S.history.length+'g)':'none (need 2+ games)', sign:0},
+    {label:'Final adjusted avg', val:p2t(m.avgMs), sign:0, bold:true},
+  ];
+
+  const factorHtml=factors.map(f=>`
+    <div class="factor-row">
+      <span class="factor-label"${f.bold?' style="color:var(--w);font-weight:600"':''}>${f.label}</span>
+      <span class="factor-val ${f.sign>0?'pos':f.sign<0?'neg':'neu'}"${f.bold?' style="color:var(--w)"':''}>${f.val}</span>
+    </div>`).join('');
+
+  document.getElementById('stat-factors').innerHTML=factorHtml;
+
+  // Extra stats row
+  if(m.topHalves.length>=1) document.getElementById('st-top-avg').textContent=p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length);
+  if(m.botHalves.length>=1) document.getElementById('st-bot-avg').textContent=p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length);
+  document.getElementById('st-rph').textContent=m.avgRunsPerHalf.toFixed(1);
 }
+
+// ── LEGACY: renderStatAnalysis kept for fallback compatibility ────────────────
+function renderStatAnalysis(g,m,apEl,aaEl){ renderStatPanel(g,m); }
 
 // ══ RENDER ════════════════════════════════════════════════════════════════════
 function renderAll(){
@@ -1079,7 +1128,7 @@ function renderAll(){
   document.getElementById('vbar').classList.toggle('show',!S.admin);
 
   renderDots(); renderSG(); renderHI(); updatePaceBar();
-  const m=computeModel(); if(m) updateProjPanel(m);
+  const m=computeModel(); if(m){ updateProjPanel(m); renderStatPanel(g,m); }
   renderSeason();
 }
 
@@ -1166,6 +1215,7 @@ function updatePaceBar(){
 
 function updateProjPanel(m){
   const g=S.game; if(!m||!g) return;
+  renderStatPanel(g,m);
   const fmt=ms=>fmtT(new Date(ms));
   const vs=ms=>{const d=Math.round((ms-m.thr3)/60000);return d>0?`+${d}m over 3h`:`${Math.abs(d)}m under 3h`;};
   const vc=ms=>(ms-m.thr3)/60000>20?'ov':'un';
@@ -1516,7 +1566,8 @@ function tab(name){
   document.querySelectorAll('.nt').forEach((b,i)=>b.classList.toggle('on',ns[i]===name));
   document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('on',ns[i]===name));
   if(name==='proj'){
-    const m=computeModel(); if(m)updateProjPanel(m);
+    const m=computeModel();
+    if(m){ updateProjPanel(m); renderStatPanel(S.game,m); }
     if(S.game&&S.game.halfInnings.length>=2&&(S.game.halfInnings.length!==aiLastInningCount||aiStatus==='idle')){
       debounceAI();
     }
