@@ -666,6 +666,7 @@ function startGame(){
   let sm=n.getTime();
   if(sv){const[h,m]=sv.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);sm=d.getTime();}
   S.game=blankGame();
+  aiHasProjection=false; aiLastCalledMs=0;
   S.game.home     =document.getElementById('i-hm').value.trim()||'Clemson';
   S.game.away     =document.getElementById('i-aw').value.trim()||'Opponent';
   S.game.date     =document.getElementById('i-dt').value||n.toISOString().split('T')[0];
@@ -897,13 +898,17 @@ function avgAt(his){
   let sum=0,w=0; u.forEach((h,i)=>{const wt=Math.exp(0.15*(i-(u.length-1)));sum+=h.durMs*wt;w+=wt;}); return sum/w;
 }
 
-// ══ OPENROUTER AI ════════════════════════════════════════════════════════════
-const OR_KEY = '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';
-const OR_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OR_MODEL = 'meta-llama/llama-3.1-8b-instruct:free';
-const AI_MIN_INTERVAL = 180000; // 3 minutes — safe for free tier
+// ══ GROQ AI ══════════════════════════════════════════════════════════════════
+// Free at console.groq.com — no credit card, 30 req/min free tier
+// Create key at: console.groq.com/keys
+const GROQ_KEY = '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'; // ← paste your Groq key here
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.1-8b-instant'; // free, fast, 30 req/min
+const AI_MIN_INTERVAL = 60000; // 1 min guard — well within 30 req/min limit
+const AI_POLL_INTERVAL = 300000; // 5 minutes between auto-polls
 
 let aiTimer=null, aiPollTimer=null, aiLastCalledMs=0, aiLastInningCount=-1, aiStatus='idle';
+let aiHasProjection=false; // tracks whether AI panel has a real result
 
 function setAIStatus(status, msg){
   aiStatus=status;
@@ -915,27 +920,33 @@ function setAIStatus(status, msg){
     ok:          {color:'var(--gn)',   text:'🤖 AI: updated '+(msg||'')},
     error:       {color:'var(--rd)',   text:'🤖 AI: '+(msg||'error')},
     rate_limited:{color:'var(--or)',   text:'🤖 AI: cooling down'},
-    no_key:      {color:'var(--g3)',   text:'🤖 AI: no key configured'},
+    no_key:      {color:'var(--g3)',   text:'🤖 AI: add Groq key'},
   };
   const c=cfg[status]||cfg.idle;
   badge.style.color=c.color; badge.textContent=c.text;
 }
 
-// Called from endHalf — fires immediately if 3min has passed, otherwise schedules
-function debounceAI(){
-  clearTimeout(aiTimer);
-  const wait=Math.max(0, AI_MIN_INTERVAL-(Date.now()-aiLastCalledMs));
-  aiTimer=setTimeout(runAI, wait+1500);
+function canCallAI(){
+  return Date.now()-aiLastCalledMs >= AI_MIN_INTERVAL;
 }
 
-// 3-minute periodic poll — keeps AI fresh even between half-innings
+// Called from endHalf — always fires after each half-inning, respecting 1-min guard
+function debounceAI(){
+  clearTimeout(aiTimer);
+  const wait=Math.max(1500, AI_MIN_INTERVAL-(Date.now()-aiLastCalledMs));
+  aiTimer=setTimeout(runAI, wait);
+}
+
+// 5-minute periodic poll + fires immediately if no projection exists yet
 function startAIPoll(){
   clearInterval(aiPollTimer);
   aiPollTimer=setInterval(()=>{
-    if(S.game&&S.game.active&&S.game.halfInnings.length>=2){
-      if(Date.now()-aiLastCalledMs>=AI_MIN_INTERVAL) runAI();
+    if(!S.game||!S.game.active||S.game.halfInnings.length<2) return;
+    // Fire if no projection yet OR 5 minutes have elapsed
+    if(!aiHasProjection||Date.now()-aiLastCalledMs>=AI_POLL_INTERVAL){
+      if(canCallAI()) runAI();
     }
-  }, AI_MIN_INTERVAL);
+  }, 15000); // check every 15s, actual call gated by conditions above
 }
 startAIPoll();
 
@@ -946,10 +957,11 @@ async function runAI(){
   updateProjPanel(m);
   renderStatPanel(g,m);
 
-  if(!OR_KEY||OR_KEY==='YOUR_OPENROUTER_KEY_HERE'){setAIStatus('no_key');return;}
+  if(!GROQ_KEY||GROQ_KEY==='YOUR_GROQ_KEY_HERE'){setAIStatus('no_key');return;}
+  if(!canCallAI()){return;} // guard — caller should check but be safe
 
-  aiLastInningCount=g.halfInnings.length;
   aiLastCalledMs=Date.now();
+  aiLastInningCount=g.halfInnings.length;
   setAIStatus('loading');
 
   document.getElementById('ai-proj-time').textContent='...';
@@ -983,34 +995,38 @@ PACE: Early(1-3) ${avgOf(earlyArr)} | Mid(4-6) ${avgOf(midArr)} | Late(7+) ${avg
 STAT MODEL: adj avg ${p2t(m.avgMs)} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}% | ${m.outlierSet.size} outliers removed
 ${seasonCtx}
 
-College baseball context: avg half ~11-13 min. Pitching changes add ~3min each (more frequent in 7th+). Close late games run longer. Run rule (10+ after 7th) ends game early.
+College baseball context: avg half ~11-13 min. Pitching changes add ~3min each (more in 7th+). Close late games run longer. Run rule (10+ after 7th) ends game early.
 
-Reply ONLY with valid JSON, no markdown:
+Reply ONLY with valid JSON, no markdown, no extra text:
 {"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence on your end time vs the stat model's ${fmtT(new Date(m.pFull))}.","pace_analysis":"2 sentences: pace verdict and biggest factor.","risk_factors":"One sentence on what most changes this projection."}`;
 
   try {
-    const r=await fetch(OR_URL,{
+    const r=await fetch(GROQ_URL,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'Authorization':`Bearer ${OR_KEY}`,
-        'HTTP-Referer':'https://github.com',
-        'X-Title':'CU Baseball Pace Tracker'
+        'Authorization':`Bearer ${GROQ_KEY}`
       },
       body:JSON.stringify({
-        model:OR_MODEL,
+        model:GROQ_MODEL,
         messages:[{role:'user',content:prompt}],
-        max_tokens:400,
+        max_tokens:350,
         temperature:0.3
       })
     });
-    if(r.status===429){setAIStatus('rate_limited');return;}
+    if(r.status===429){
+      setAIStatus('rate_limited');
+      // Back off 2 minutes on rate limit
+      aiLastCalledMs=Date.now()-AI_MIN_INTERVAL+120000;
+      return;
+    }
     if(!r.ok){const eb=await r.json().catch(()=>({}));setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,35));return;}
     const d=await r.json();
     const raw=d.choices?.[0]?.message?.content||'';
     let parsed; try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){parsed=null;}
-    if(!parsed){setAIStatus('error','bad JSON');return;}
+    if(!parsed){setAIStatus('error','bad JSON — retry soon');return;}
 
+    aiHasProjection=true;
     setAIStatus('ok',fmtT(new Date()));
     document.getElementById('ai-proj-time').textContent=parsed.projected_end||'--:--';
     document.getElementById('ai-proj-range').textContent=parsed.range_early&&parsed.range_late?`${parsed.range_early} – ${parsed.range_late}`:'';
