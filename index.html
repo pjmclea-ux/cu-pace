@@ -11,7 +11,9 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+// ── PASTE YOUR NEW FIREBASE CONFIG HERE ──────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyAAyv81Scs-zhJYzL3EsIxtZ7D6NjYANVU",
     authDomain: "cu-pace-tracker.firebaseapp.com",
@@ -21,10 +23,18 @@ const firebaseConfig = {
     messagingSenderId: "136095664732",
     appId: "1:136095664732:web:2531ab4bb2d2a1112b7499"
 };
+// ─────────────────────────────────────────────────────────────────────────────
+
 try {
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  window._fb = { db, ref, set, onValue, ok: true };
+  window._fb = { db, ref, set, get, onValue, ok: true };
+
+  // Fetch Groq key from Firebase at runtime — never stored in this file
+  get(ref(db, 'config/groq_key')).then(snap => {
+    if(snap.exists()) window._groqKey = snap.val();
+  }).catch(()=>{});
+
 } catch(e) {
   window._fb = { ok: false };
 }
@@ -589,9 +599,9 @@ body { background:var(--bg); color:var(--w); font-family:var(--fb); min-height:1
 
 <script>
 // ══ CONFIG ════════════════════════════════════════════════════════════════════
-const PW      = "tigers";   // ← change to your password
-const DB_PATH = "cu_pace2";
-const LK      = "cu_v6";
+const PW      = "tigers25";  // ← change to your new password
+const DB_PATH = "cu_pace3";  // Firebase Realtime DB path for all game data
+const LK      = "cu_v7";     // new localStorage key
 
 // ══ STATE ═════════════════════════════════════════════════════════════════════
 let S = { game:null, history:[], admin:false, fb:null, fbOk:false, editIdx:-1 };
@@ -898,17 +908,16 @@ function avgAt(his){
   let sum=0,w=0; u.forEach((h,i)=>{const wt=Math.exp(0.15*(i-(u.length-1)));sum+=h.durMs*wt;w+=wt;}); return sum/w;
 }
 
-// ══ GROQ AI ══════════════════════════════════════════════════════════════════
-// Free at console.groq.com — no credit card, 30 req/min free tier
-// Create key at: console.groq.com/keys
-const GROQ_KEY = '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'; // ← paste your Groq key here
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.1-8b-instant'; // free, fast, 30 req/min
-const AI_MIN_INTERVAL = 60000; // 1 min guard — well within 30 req/min limit
-const AI_POLL_INTERVAL = 300000; // 5 minutes between auto-polls
+// ══ AI (Groq) ════════════════════════════════════════════════════════════════
+// Key is stored in Firebase at config/groq_key — fetched at runtime, never in this file
+// See setup guide for how to store it there
+const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const AI_MIN_INTERVAL  = 60000;
+const AI_POLL_INTERVAL = 300000;
 
 let aiTimer=null, aiPollTimer=null, aiLastCalledMs=0, aiLastInningCount=-1, aiStatus='idle';
-let aiHasProjection=false; // tracks whether AI panel has a real result
+let aiHasProjection=false;
 
 function setAIStatus(status, msg){
   aiStatus=status;
@@ -920,7 +929,7 @@ function setAIStatus(status, msg){
     ok:          {color:'var(--gn)',   text:'🤖 AI: updated '+(msg||'')},
     error:       {color:'var(--rd)',   text:'🤖 AI: '+(msg||'error')},
     rate_limited:{color:'var(--or)',   text:'🤖 AI: cooling down'},
-    no_key:      {color:'var(--g3)',   text:'🤖 AI: add Groq key'},
+    no_key:      {color:'var(--g3)',   text:'🤖 AI: proxy not configured'},
   };
   const c=cfg[status]||cfg.idle;
   badge.style.color=c.color; badge.textContent=c.text;
@@ -957,8 +966,9 @@ async function runAI(){
   updateProjPanel(m);
   renderStatPanel(g,m);
 
-  if(!GROQ_KEY||GROQ_KEY==='YOUR_GROQ_KEY_HERE'){setAIStatus('no_key');return;}
-  if(!canCallAI()){return;} // guard — caller should check but be safe
+  const groqKey=window._groqKey||'';
+  if(!groqKey){setAIStatus('no_key');return;}
+  if(!canCallAI()) return;
 
   aiLastCalledMs=Date.now();
   aiLastInningCount=g.halfInnings.length;
@@ -970,12 +980,10 @@ async function runAI(){
   document.getElementById('ai-analysis-text').textContent='';
   document.getElementById('ai-risk-text').textContent='';
 
-  const seasonCtx=S.history.length>0
-    ?`Season (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'} | avg half ${m.seasonAvg?p2t(m.seasonAvg):'N/A'} | run rules: ${S.history.filter(x=>x.runRule==='Yes').length}`
-    :'No prior season data.';
-
-  const trendDesc=m.trendSlope>5000?`SLOWING (+${Math.round(m.trendSlope/1000)}s/half)`
-    :m.trendSlope<-5000?`SPEEDING UP (${Math.round(m.trendSlope/1000)}s/half)`:'STEADY';
+  const n=g.halfInnings.length;
+  const elapsedMin=Math.round((Date.now()-g.startMs)/60000);
+  const margin=Math.abs(g.homeScore-g.awayScore);
+  const leader=g.homeScore>g.awayScore?g.home:g.awayScore>g.homeScore?g.away:'tied';
 
   const earlyArr=g.halfInnings.filter(h=>h.innNum<=3).map(h=>h.durMs);
   const midArr=g.halfInnings.filter(h=>h.innNum>=4&&h.innNum<=6).map(h=>h.durMs);
@@ -983,48 +991,71 @@ async function runAI(){
   const avgOf=arr=>arr.length?p2t(arr.reduce((a,b)=>a+b,0)/arr.length):'N/A';
   const sorted=[...g.halfInnings].sort((a,b)=>b.durMs-a.durMs);
 
-  const prompt=`You are a college baseball pace analyst. Project this game's end time based on the data below.
+  const trendDesc=m.trendSlope>5000?`SLOWING (+${Math.round(m.trendSlope/1000)}s/half trend)`
+    :m.trendSlope<-5000?`SPEEDING UP (${Math.round(m.trendSlope/1000)}s/half trend)`:'STEADY';
 
-GAME: ${g.away} @ ${g.home} | ${g.date} | First pitch: ${g.startTime}
-SCORE: ${g.home} ${g.homeScore}, ${g.away} ${g.awayScore} | Current: ${hl(g.curIdx)}${m.extra?' EXTRA INNINGS':''} | Elapsed: ${p2h(Date.now()-g.startMs)}
+  const recent4=g.halfInnings.slice(-4);
+  const recent4Avg=recent4.length>=3?recent4.reduce((a,h)=>a+h.durMs,0)/recent4.length:null;
+  const momentumDesc=recent4Avg?`Recent 4 halves avg ${p2t(recent4Avg)} vs overall ${p2t(m.avgMs)} (${recent4Avg>m.avgMs*1.1?'SLOWING recently':recent4Avg<m.avgMs*0.9?'SPEEDING UP recently':'consistent'})`:null;
 
-HALF-INNINGS: ${g.halfInnings.map(h=>`${hl(h.idx)}:${p2t(h.durMs)}/${h.runs}R`).join(' ')}
+  const seasonCtx=S.history.length>=2
+    ?`Prior season (${S.history.length} games): avg game ${S.history.filter(x=>x.totalMs>0).length?p2h(S.history.filter(x=>x.totalMs>0).reduce((a,b)=>a+b.totalMs,0)/S.history.filter(x=>x.totalMs>0).length):'N/A'} | avg half ${m.seasonAvg?p2t(m.seasonAvg):'N/A'} | run rules: ${S.history.filter(x=>x.runRule==='Yes').length} | vs ${g.away}: ${S.history.filter(x=>x.away===g.away||x.home===g.away).length} games`
+    :'No prior season data.';
 
-PACE: Early(1-3) ${avgOf(earlyArr)} | Mid(4-6) ${avgOf(midArr)} | Late(7+) ${avgOf(lateArr)} | Top avg ${m.topHalves.length?p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length):'N/A'} | Bot avg ${m.botHalves.length?p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length):'N/A'} | Trend: ${trendDesc} | ${m.avgRunsPerHalf.toFixed(2)} R/half | Longest: ${hl(sorted[0].idx)} ${p2t(sorted[0].durMs)}
+  const statProjTime=fmtT(new Date(m.pFull));
+  const spread=m.avgMs*Math.sqrt(Math.max(18-n,1))*0.18;
 
-STAT MODEL: adj avg ${p2t(m.avgMs)} | projected end ${fmtT(new Date(m.pFull))} | confidence ${m.confidence}% | ${m.outlierSet.size} outliers removed
+  const prompt=`You are an expert college baseball pace-of-play analyst. Analyze this live game and project its end time.
+
+═══ GAME ═══
+${g.away} @ ${g.home} | ${g.date} | First pitch: ${g.startTime}
+Score: ${g.home} ${g.homeScore} – ${g.away} ${g.awayScore} | ${leader==='tied'?'TIED':`${leader} leads by ${margin}`}
+Now: ${hl(g.curIdx)}${m.extra?' ⚡ EXTRAS':''} | Elapsed: ${elapsedMin}min | Halves done: ${n}
+
+═══ HALF-INNING LOG ═══
+${g.halfInnings.map(h=>`${hl(h.idx).padEnd(4)}: ${p2t(h.durMs).padStart(5)} | ${h.runs}R${m.outlierSet.has(g.halfInnings.indexOf(h))?' [OUTLIER]':''}`).join('\n')}
+
+═══ PACE ═══
+Early(1-3): ${avgOf(earlyArr)} | Mid(4-6): ${avgOf(midArr)} | Late(7+): ${avgOf(lateArr)}
+Top avg: ${m.topHalves.length?p2t(m.topHalves.reduce((a,h)=>a+h.durMs,0)/m.topHalves.length):'N/A'} | Bot avg: ${m.botHalves.length?p2t(m.botHalves.reduce((a,h)=>a+h.durMs,0)/m.botHalves.length):'N/A'}
+Longest: ${hl(sorted[0].idx)} ${p2t(sorted[0].durMs)} (${sorted[0].runs}R) | ${m.avgRunsPerHalf.toFixed(2)} R/half
+Trend: ${trendDesc}${momentumDesc?'\nMomentum: '+momentumDesc:''}
+Outliers removed: ${m.outlierSet.size}
+
+═══ STAT MODEL ═══
+Adj avg: ${p2t(m.avgMs)} | Run adj: +${p2t(m.runAdj)}/half | Trend adj: ${m.trendAdj>=0?'+':''}${Math.round(m.trendAdj/60000*10)/10}min
+Blowout: ${m.blowoutAdj<0?Math.round(m.blowoutAdj/60000*10)/10+'min/half':'none'} | Close late: ${m.tightLateAdj>0?'+'+p2t(m.tightLateAdj)+'/half':'none'}
+Projected end: ${statProjTime} | Range: ${fmtT(new Date(m.pFull-spread))}–${fmtT(new Date(m.pFull+spread))} | Confidence: ${m.confidence}%
 ${seasonCtx}
 
-College baseball context: avg half ~11-13 min. Pitching changes add ~3min each (more in 7th+). Close late games run longer. Run rule (10+ after 7th) ends game early.
+═══ BASEBALL CONTEXT ═══
+- D1 college avg half: 11-13 min. Full games 2:45–3:30.
+- Each pitching change: ~3 min. Expect more in 7th+ of close games.
+- Close game (≤1 run) into 7th+: almost certainly goes 9 innings, extras risk.
+- Run rule (10+ after 7 innings): game ends immediately.
+- No bot 9 if home team leads after top 9: saves ~12 min.
+- Extra innings use runner-on-2nd: ~9-11 min each.
+- 3+ run innings often involve pitching changes that compound time.
+- If recent halves are trending longer, remaining halves likely will too.
 
-Reply ONLY with valid JSON, no markdown, no extra text:
-{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One crisp sentence on your end time vs the stat model's ${fmtT(new Date(m.pFull))}.","pace_analysis":"2 sentences: pace verdict and biggest factor.","risk_factors":"One sentence on what most changes this projection."}`;
+Evaluate the stat model's ${statProjTime} projection. Adjust only if there's a clear baseball reason. Be specific to THIS game's data.
+
+Reply ONLY with valid JSON, no markdown:
+{"projected_end":"H:MM PM","range_early":"H:MM PM","range_late":"H:MM PM","projection_reasoning":"One sentence: your projection, whether it agrees with or adjusts ${statProjTime}, and the single biggest reason why.","pace_analysis":"2-3 sentences: pace verdict for this specific game, dominant factor, what to watch.","risk_factors":"One sentence on the most likely scenario that changes this projection — be specific."}`;
 
   try {
     const r=await fetch(GROQ_URL,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${GROQ_KEY}`
-      },
-      body:JSON.stringify({
-        model:GROQ_MODEL,
-        messages:[{role:'user',content:prompt}],
-        max_tokens:350,
-        temperature:0.3
-      })
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
+      body:JSON.stringify({model:GROQ_MODEL,messages:[{role:'user',content:prompt}],max_tokens:450,temperature:0.25})
     });
-    if(r.status===429){
-      setAIStatus('rate_limited');
-      // Back off 2 minutes on rate limit
-      aiLastCalledMs=Date.now()-AI_MIN_INTERVAL+120000;
-      return;
-    }
-    if(!r.ok){const eb=await r.json().catch(()=>({}));setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,35));return;}
+    if(r.status===429){setAIStatus('rate_limited');aiLastCalledMs=Date.now()-AI_MIN_INTERVAL+120000;return;}
+    if(!r.ok){const eb=await r.json().catch(()=>({}));setAIStatus('error',(eb?.error?.message||'HTTP '+r.status).substring(0,40));return;}
     const d=await r.json();
     const raw=d.choices?.[0]?.message?.content||'';
-    let parsed; try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){parsed=null;}
-    if(!parsed){setAIStatus('error','bad JSON — retry soon');return;}
+    let parsed;
+    try{parsed=JSON.parse(raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim());}catch(e){parsed=null;}
+    if(!parsed){setAIStatus('error','retry soon');return;}
 
     aiHasProjection=true;
     setAIStatus('ok',fmtT(new Date()));
@@ -1033,7 +1064,7 @@ Reply ONLY with valid JSON, no markdown, no extra text:
     document.getElementById('ai-proj-reasoning').textContent=parsed.projection_reasoning||'';
     document.getElementById('ai-analysis-text').textContent=parsed.pace_analysis||'';
     document.getElementById('ai-risk-text').textContent=parsed.risk_factors?`⚠ ${parsed.risk_factors}`:'';
-  } catch(e){setAIStatus('error',(e.message||'network').substring(0,35));}
+  } catch(e){setAIStatus('error',(e.message||'network').substring(0,40));}
 }
 
 // ── RENDER STAT MODEL PANEL ───────────────────────────────────────────────────
